@@ -280,6 +280,8 @@ export class EditorComponent {
 
   public async loadNote(payload: NotePayload): Promise<void> {
     state.applyingRemote = true
+    this.container.classList.add('is-loading')
+    this.editorHost.classList.remove('fade-in')
 
     // Hide empty state immediately so user doesn't see "Select a note" while loading
     this.emptyState.style.display = 'none'
@@ -291,12 +293,14 @@ export class EditorComponent {
     this.attachKeyboardShortcuts()
 
     if (!this.editor) {
+      this.container.classList.remove('is-loading')
       state.applyingRemote = false
       return
     }
 
     const model = this.editor.getModel()
     if (!model) {
+      this.container.classList.remove('is-loading')
       state.applyingRemote = false
       return
     }
@@ -324,6 +328,10 @@ export class EditorComponent {
     this.updatePreview()
     this.updateDecorations()
     this.updateHashtagDecorations()
+
+    // Reveal content with animation
+    this.container.classList.remove('is-loading')
+    this.editorHost.classList.add('fade-in')
 
     // Restore cursor position if saved
     if (state.cursorPositions.has(payload.id)) {
@@ -397,6 +405,8 @@ export class EditorComponent {
   }
 
   showEmpty(): void {
+    this.container.classList.remove('is-loading')
+    this.editorHost.classList.remove('fade-in')
     this.emptyState.style.display = 'flex'
     this.editorHost.style.display = 'none'
     if (this.previewHost) {
@@ -411,6 +421,8 @@ export class EditorComponent {
   }
 
   hideAll(): void {
+    this.container.classList.remove('is-loading')
+    this.editorHost.classList.remove('fade-in')
     this.emptyState.style.display = 'none'
     this.editorHost.style.display = 'none'
     if (this.previewHost) {

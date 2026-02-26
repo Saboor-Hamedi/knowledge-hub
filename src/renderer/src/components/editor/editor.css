@@ -8,6 +8,41 @@
   width: 100%;
 }
 
+.editor-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-strong));
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.editor-container.is-loading::before {
+  opacity: 1;
+  animation: progressRibbon 1.5s infinite linear;
+}
+
+@keyframes progressRibbon {
+  0% {
+    width: 0;
+    left: 0;
+  }
+
+  50% {
+    width: 30%;
+    left: 35%;
+  }
+
+  100% {
+    width: 0;
+    left: 100%;
+  }
+}
+
 .editor-container.drag-over {
   background: rgba(127, 167, 255, 0.08);
 }
@@ -34,13 +69,36 @@
   position: relative;
   flex: 1;
   min-height: 0;
+  opacity: 1;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.editor-container.is-loading .editor-host {
+  opacity: 0.6;
+}
+
+.editor-host.fade-in {
+  animation: contentFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .preview-host {
   position: relative;
   flex: 1;
   min-height: 0;
-  height: 100%; /* Force height to match parent flex */
+  height: 100%;
+  /* Force height to match parent flex */
   overflow-y: auto !important;
   background: var(--panel);
   display: none;
@@ -57,9 +115,11 @@
 .monaco-editor,
 .monaco-hover,
 .monaco-hover-content,
-.monaco-list.list_id_1, /* Often the suggest list ID */
+.monaco-list.list_id_1,
+/* Often the suggest list ID */
 .editor-widget {
-  z-index: 2147483647 !important; /* Max signed 32-bit integer */
+  z-index: 2147483647 !important;
+  /* Max signed 32-bit integer */
 }
 
 /* Force hover contrast and visibility */
@@ -240,6 +300,7 @@
   color: var(--primary);
   pointer-events: none;
 }
+
 /* Cursor line fading removed to keep text always visible */
 /* Monaco doesn't have a simple way to target 'not current line' in pure CSS without complex selectors,
    but we can at least fade them globally for that 'clean' look. */
@@ -301,7 +362,8 @@
 }
 
 .mention-highlight {
-  color: #a78bfa !important; /* Soft purple for mentions */
+  color: #a78bfa !important;
+  /* Soft purple for mentions */
   font-weight: 600 !important;
   background: rgba(167, 139, 250, 0.1);
   border-radius: 3px;
@@ -324,7 +386,8 @@
 
 /* 3. Ensure the selection highlight itself is opaque enough to be seen */
 .monaco-editor .suggest-widget .monaco-list-row.focused {
-  background-color: #007acc !important; /* Classic VS Code Blue */
+  background-color: #007acc !important;
+  /* Classic VS Code Blue */
   color: white !important;
 }
 

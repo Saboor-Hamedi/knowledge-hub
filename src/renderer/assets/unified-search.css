@@ -45,7 +45,10 @@
 
 .unified-search-wrapper:focus-within {
   border-color: var(--search-focus-border);
-  box-shadow: 0 0 0 1px var(--search-focus-border);
+  box-shadow:
+    0 0 0 3px rgba(127, 167, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.2);
+  background: var(--bg);
 }
 
 /* Search input field */
@@ -149,17 +152,19 @@
 @keyframes searchSlideDown {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-12px) scale(0.98);
+    backdrop-filter: blur(0px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    backdrop-filter: blur(16px);
   }
 }
 
 .unified-search-container.animated {
-  animation: searchSlideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: searchSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Responsive adjustments */
@@ -179,9 +184,13 @@
 
 /* Override Monaco's find widget with our custom colors */
 .monaco-editor .find-widget {
-  background-color: var(--search-bg) !important;
-  border: 1px solid var(--search-border) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  background-color: var(--panel-strong) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45) !important;
+  animation: searchSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  padding: 4px !important;
 }
 
 .monaco-editor .find-widget .monaco-inputbox {
@@ -191,8 +200,9 @@
 
 .monaco-editor .find-widget .monaco-inputbox.synthetic-focus,
 .monaco-editor .find-widget .monaco-inputbox:focus-within {
-  border-color: var(--search-focus-border) !important;
-  box-shadow: 0 0 0 1px var(--search-focus-border) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(127, 167, 255, 0.15) !important;
+  background-color: var(--bg) !important;
 }
 
 .monaco-editor .find-widget .monaco-inputbox input {

@@ -21,6 +21,8 @@ export class FuzzyFinder {
   private visibleItems: (NoteMeta | Command)[] = []
   private isOpen = false
   private backdrop: HTMLElement | null = null
+  private lastMouseX = 0
+  private lastMouseY = 0
 
   public get isVisible(): boolean {
     return this.isOpen
@@ -205,7 +207,7 @@ export class FuzzyFinder {
         e.preventDefault()
         e.stopPropagation()
         this.selectedIndex = (this.selectedIndex + 1) % this.visibleItems.length
-        this.renderList()
+        this.updateSelectionUI()
         this.scrollToSelected()
       }
     } else if (e.key === 'ArrowUp') {
@@ -214,7 +216,7 @@ export class FuzzyFinder {
         e.stopPropagation()
         this.selectedIndex =
           (this.selectedIndex - 1 + this.visibleItems.length) % this.visibleItems.length
-        this.renderList()
+        this.updateSelectionUI()
         this.scrollToSelected()
       }
     } else if (e.key === 'Enter') {
@@ -256,6 +258,18 @@ export class FuzzyFinder {
     if (selectedEl) {
       selectedEl.scrollIntoView({ block: 'nearest' })
     }
+  }
+
+  private updateSelectionUI(): void {
+    if (!this.list) return
+    const items = this.list.querySelectorAll('.fuzzy-item')
+    items.forEach((el, index) => {
+      if (index === this.selectedIndex) {
+        el.classList.add('is-selected')
+      } else {
+        el.classList.remove('is-selected')
+      }
+    })
   }
 
   private highlight(text: string, query: string): string {
@@ -424,16 +438,19 @@ export class FuzzyFinder {
           }
         }
       })
-      el.addEventListener('mouseover', () => {
+      el.addEventListener('mousemove', ((e: MouseEvent) => {
+        // Prevent hover selection from triggering during keyboard scroll
+        // by checking if the mouse has actually moved
+        if (e.clientX === this.lastMouseX && e.clientY === this.lastMouseY) return
+        this.lastMouseX = e.clientX
+        this.lastMouseY = e.clientY
+
         const idx = parseInt((el as HTMLElement).dataset.index || String(index))
         if (this.selectedIndex !== idx) {
-          const prev = this.list?.querySelector(`.fuzzy-item[data-index="${this.selectedIndex}"]`)
-          if (prev) prev.classList.remove('is-selected')
-
           this.selectedIndex = idx
-          el.classList.add('is-selected')
+          this.updateSelectionUI()
         }
-      })
+      }) as EventListener)
     })
   }
 

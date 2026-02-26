@@ -36,21 +36,40 @@
   padding: 3px 6px;
   border-radius: 4px;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
   position: relative;
-  color: var(--text-muted);
+  color: var(--text-muted, rgba(255, 255, 255, 0.35));
+  /* More dim for non-hover state */
+  border: 1px solid transparent;
+  /* Prepare for pill border */
 }
 
 .breadcrumb-item:hover {
   background: var(--hover);
-  color: var(--text-strong);
+  color: #ffffff;
+  /* Pure white on hover */
+  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.breadcrumb-item:active {
+  opacity: 0.8;
 }
 
 .breadcrumb-item.is-active {
   color: var(--text-strong);
   font-weight: 500;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.breadcrumb-item.is-active:hover {
+  /* background: var(--hover);
+  border-color: rgba(255, 255, 255, 0.05); */
+  color: var(--text-muted);
 }
 
 /* Icons within items */
@@ -173,6 +192,7 @@
     opacity: 0;
     transform: scale(0.96) translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -183,13 +203,16 @@
 .breadcrumb-dropdown::-webkit-scrollbar {
   width: 6px;
 }
+
 .breadcrumb-dropdown::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .breadcrumb-dropdown::-webkit-scrollbar-thumb {
   background: rgba(128, 128, 128, 0.3);
   border-radius: 3px;
 }
+
 .breadcrumb-dropdown::-webkit-scrollbar-thumb:hover {
   background: rgba(128, 128, 128, 0.5);
 }
@@ -217,9 +240,11 @@
   color: var(--text-strong);
   font-weight: 500;
 }
+
 .breadcrumb-dropdown-item.is-active:hover {
   background: var(--selection, rgba(255, 255, 255, 0.08));
 }
+
 .breadcrumb-dropdown-item.is-active .breadcrumb-dropdown-icon {
   color: var(--primary);
   opacity: 1;
@@ -278,7 +303,8 @@
 .breadcrumb-dropdown-children.is-expanded::before {
   content: '';
   position: absolute;
-  left: 14px; /* Adjust based on parent padding */
+  left: 14px;
+  /* Adjust based on parent padding */
   top: 0;
   bottom: 0;
   width: 1px;
@@ -292,9 +318,11 @@
     max-height: 0;
     transform: translateY(-5px);
   }
+
   to {
     opacity: 1;
-    max-height: 500px; /* Arbitrary large height */
+    max-height: 500px;
+    /* Arbitrary large height */
     transform: translateY(0);
   }
 }

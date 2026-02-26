@@ -32,6 +32,7 @@ export class StatusBar {
     this.tooltip = new RichTooltip({
       delay: 200,
       interactive: false,
+      ignoreSafeZone: true,
       className: 'statusbar-tooltip'
     })
 
@@ -253,9 +254,14 @@ export class StatusBar {
       const hasContent = !!el.textContent?.trim() || !!el.querySelector('svg')
 
       // Some items are persistent or managed externally (like Git)
-      const isPersistent = ['version', 'sync', 'git'].includes(item.key)
+      const isPersistent = ['version', 'sync'].includes(item.key)
 
-      if (isEnabled && (isPersistent || hasContent)) {
+      // Guard explicitly against git overriding, gitService should have final say.
+      if (item.key === 'git') {
+        if (!isEnabled || el.textContent?.trim() === '') {
+          el.style.display = 'none'
+        }
+      } else if (isEnabled && (isPersistent || hasContent)) {
         el.style.display = 'flex'
         el.style.visibility = 'visible'
       } else {
@@ -437,6 +443,10 @@ export class StatusBar {
     el.addEventListener('mouseenter', () => {
       if (!this.tooltip) return
 
+      // Guard: Don't show tooltip if sync menu is open
+      const syncMenu = this.container.querySelector('.statusbar__sync-menu')
+      if (syncMenu?.classList.contains('is-open')) return
+
       const metadata = gitService.getMetadata()
       const summary = gitService.getSummary()
       if (!metadata.branch) return
@@ -494,6 +504,10 @@ export class StatusBar {
 
       el.addEventListener('mouseenter', () => {
         if (!this.tooltip) return
+
+        // Guard: Don't show tooltip if sync menu is open
+        const syncMenu = this.container.querySelector('.statusbar__sync-menu')
+        if (syncMenu?.classList.contains('is-open')) return
 
         // Guard: Don't show tooltip for hidden elements or items with no content
         // This prevents "ghost" tooltips when the editor is closed
@@ -562,17 +576,12 @@ export class StatusBar {
       this.gitBranchEl.removeAttribute('title')
 
       // Re-attach tooltip listeners to ensure they are active (tooltip content depends on metadata state)
-      // We clone to clear old listeners to be safe, or just ensure attachGitTooltip is robust
-      // For consistency with the else block, we can leave the element as is but just re-attach tooltip logic via a fresh call if needed?
-      // Actually, attachGitTooltip adds listeners. If we don't clone/replace, we might add duplicate listeners or listeners on old state.
-      // However, attachGitTooltip checks state dynamically on mouseenter. So we just need one set of listeners.
-      // For safety against duplicates or stale state, we'll clone.
       const newEl = this.gitBranchEl.cloneNode(true) as HTMLElement
       this.gitBranchEl.parentNode?.replaceChild(newEl, this.gitBranchEl)
       this.gitBranchEl = newEl
       this.attachGitTooltip()
     } else {
-      // Not a git repo, so hide the element as per user request
+      // Not a git repo, hide the entire element block
       this.gitBranchEl.style.display = 'none'
       this.gitBranchEl.classList.remove('is-init-needed')
       if (branchEl) branchEl.textContent = ''

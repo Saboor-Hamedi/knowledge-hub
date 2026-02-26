@@ -2,6 +2,7 @@ export interface TooltipOptions {
   className?: string
   delay?: number
   interactive?: boolean
+  ignoreSafeZone?: boolean
 }
 
 export class RichTooltip {
@@ -23,6 +24,7 @@ export class RichTooltip {
     document.body.appendChild(this.el)
 
     if (this.options.interactive) {
+      this.el.classList.add('is-interactive')
       this.el.addEventListener('mouseenter', () => this.cancelHide())
       this.el.addEventListener('mouseleave', () => this.hide())
     }
@@ -35,6 +37,8 @@ export class RichTooltip {
 
   public setInteractive(interactive: boolean): void {
     this.options.interactive = interactive
+    if (interactive) this.el.classList.add('is-interactive')
+    else this.el.classList.remove('is-interactive')
   }
 
   public show(target: HTMLElement, content: string | HTMLElement): void {
@@ -117,7 +121,7 @@ export class RichTooltip {
     const maxLeft = window.innerWidth - tooltipRect.width - padding
 
     // Activity bar safe zone (usually on the left)
-    const activityBarWidth = 64
+    const activityBarWidth = this.options.ignoreSafeZone ? 0 : 64
     const finalMinLeft = Math.max(minLeft, activityBarWidth)
 
     const clampedLeft = Math.max(finalMinLeft, Math.min(maxLeft, left))
@@ -128,7 +132,11 @@ export class RichTooltip {
     this.el.style.right = 'auto'
 
     // 5. Update arrow offset relative to the tooltip
-    const arrowOffset = targetCenterX - clampedLeft
+    let arrowOffset = targetCenterX - clampedLeft
+
+    // Smoothly clamp the knob inside the tooltip bounds (with 15px safe zones for rounded corners)
+    arrowOffset = Math.max(15, Math.min(tooltipRect.width - 15, arrowOffset))
+
     this.el.style.setProperty('--tooltip-arrow-offset', `${arrowOffset}px`)
   }
 

@@ -9,7 +9,8 @@
   padding: 0;
   color: var(--text-soft, #8b95a8);
   font-family: var(--font-ui, 'Inter', sans-serif);
-  z-index: 1000;
+  z-index: 2147483647 !important;
+  /* Elevated to be above most layers, but below high-level modals */
   box-sizing: border-box;
   box-shadow: 0 -4px 12px var(--shadow-subtle, rgba(0, 0, 0, 0.1));
 }
@@ -50,7 +51,7 @@
 }
 
 .statusbar__item:hover {
-  background: var(--hover, rgba(255, 255, 255, 0.08));
+  /* Removed awkward solid background hover that disrupted the UI flow */
   color: var(--text-strong, #e4e8f1);
 }
 
@@ -115,6 +116,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -130,7 +132,8 @@
   display: none;
   flex-direction: column;
   overflow: hidden;
-  z-index: 10005 !important;
+  z-index: 2147483647 !important;
+  /* Max z-index to stay above editor widgets and terminal */
   padding: 4px;
   backdrop-filter: blur(16px);
   animation: statusMenuIn 0.15s cubic-bezier(0, 0, 0.2, 1);
@@ -141,6 +144,7 @@
     opacity: 0;
     transform: translateY(10px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -250,13 +254,6 @@
   gap: 8px;
   white-space: normal;
   word-break: break-all;
-}
-
-/* The Knob */
-.rich-tooltip.statusbar-tooltip::after {
-  background: var(--panel-strong, rgba(30, 31, 34, 0.95));
-  border-right: 1px solid var(--border, rgba(255, 255, 255, 0.1));
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.1));
 }
 
 .rich-tooltip.statusbar-tooltip.is-visible {

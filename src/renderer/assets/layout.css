@@ -26,7 +26,8 @@ body {
   background: var(--bg);
   color: var(--text-strong);
   overflow: hidden;
-  padding-top: 32px; /* account for fixed window header */
+  padding-top: 32px;
+  /* account for fixed window header */
   position: relative;
 }
 
@@ -117,13 +118,15 @@ body {
 }
 
 .main.console-maximized {
-  z-index: 200; /* Cover everything including activity bar to be safe */
+  z-index: 200;
+  /* Cover everything including activity bar to be safe */
 }
 
 .right-panel {
   /* Changed from grid-column to absolute positioning for overlay effect */
   position: absolute;
-  top: 32px; /* Below window header */
+  top: 32px;
+  /* Below window header */
   right: 0;
   bottom: var(--statusbar-height);
   background: var(--panel);
@@ -131,7 +134,8 @@ body {
   display: none;
   min-height: 0;
   width: var(--right-panel-width);
-  z-index: 300; /* Above main content */
+  z-index: 300;
+  /* Above main content */
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -146,9 +150,10 @@ body {
   grid-column: 1 / -1;
   grid-row: 2;
   min-height: 0;
-  z-index: 1000;
+  z-index: 2147483647;
   height: var(--statusbar-height);
-  overflow: visible; /* Allow sync menu to pop up */
+  overflow: visible;
+  /* Allow sync menu to pop up */
 }
 
 .welcome-host {
@@ -261,6 +266,7 @@ body:not(.is-loading) #loadingOverlay {
   background: var(--panel);
   border-color: var(--border);
 }
+
 /* Disable transitions globally during boot and shortly after to prevent layout "walking" */
 body.is-loading *,
 body.is-loading *:before,
@@ -278,11 +284,13 @@ body.no-transitions *:after {
   left: auto;
   right: auto;
   width: 100%;
-  height: 300px; /* Default height */
+  height: 300px;
+  /* Default height */
   min-height: 100px;
   background: #1e1e1e;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  display: none; /* Hidden by default */
+  display: none;
+  /* Hidden by default */
   flex-shrink: 0;
   z-index: 500;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);

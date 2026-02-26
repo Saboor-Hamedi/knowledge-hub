@@ -1,15 +1,18 @@
 .rich-tooltip {
   position: fixed;
-  background: rgba(22, 22, 24, 0.85); /* Match custom tooltip */
+  background: rgba(22, 22, 24, 0.85);
+  /* Match custom tooltip */
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 8px 10px;
   color: #e3e3e3;
   font-size: 10px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); /* More subtle */
-  z-index: 100000;
-  pointer-events: auto;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  /* More subtle */
+  z-index: 2147483647 !important;
+  pointer-events: none;
+  /* Default to none so they don't block clicks */
   opacity: 0;
   transform: translateY(6px);
   transition:
@@ -23,7 +26,6 @@
   white-space: normal;
   word-break: break-all;
   line-height: 1.4;
-  overflow: visible; /* For knob */
 }
 
 /* Discrete item transitions - class added via JS */
@@ -36,23 +38,10 @@
 .rich-tooltip.is-visible {
   opacity: 1;
   transform: translateY(0);
-  pointer-events: auto;
 }
 
-/* The Knob */
-.rich-tooltip::after {
-  content: '';
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  background: inherit; /* Use parent background */
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  transform: rotate(45deg);
-  bottom: -3px;
-  left: var(--tooltip-arrow-offset, 50%);
-  margin-left: -3px;
-  z-index: -1;
+.rich-tooltip.is-interactive {
+  pointer-events: auto !important;
 }
 
 .rich-tooltip.is-compact {
@@ -115,9 +104,11 @@
 .rich-tooltip__stat.modified {
   color: #e2c522;
 }
+
 .rich-tooltip__stat.added {
   color: #73c991;
 }
+
 .rich-tooltip__stat.deleted {
   color: #f14c4c;
 }

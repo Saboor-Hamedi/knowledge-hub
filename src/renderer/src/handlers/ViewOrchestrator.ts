@@ -14,7 +14,7 @@ export class ViewOrchestrator {
         layout: () => void
         showEmpty: () => void
       }
-      settingsView: { update: () => void; updateVaultPath: () => void }
+      settingsView: { update: () => void }
       welcomePage: { isVisible: () => boolean; show: () => void; hide: () => void }
       tabBar: { render: () => void }
       statusBar: {

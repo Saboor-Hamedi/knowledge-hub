@@ -61,8 +61,8 @@
 .breadcrumb-item.is-active {
   color: var(--text-strong);
   font-weight: 500;
-  background: transparent;
-  border-color: transparent;
+  background: var(--primary-alpha, rgba(99, 102, 241, 0.1));
+  border-color: var(--border-subtle);
   box-shadow: none;
 }
 

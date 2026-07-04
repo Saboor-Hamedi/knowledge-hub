@@ -2,10 +2,12 @@ import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
 import hljs from 'highlight.js'
 import { state } from '../../core/state'
-import { createElement, Copy, Check } from 'lucide'
-import 'highlight.js/styles/github-dark.css'
+import { renderMermaid } from './mermaid'
+import { checkIcon, copyIcon, imageIcon, failIcon, flashButton, copyHtmlAsImage } from './capture'
+import './codewrapper.css'
 import './preview.css'
 import '../wikilink/wikilink.css'
+import { wikiLinkPreviewModal } from '../wikilink/wikilink'
 
 // Pre-register common languages at module load
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -52,22 +54,6 @@ export class PreviewComponent {
   private md: MarkdownIt
   private onWikiLinkClick?: (target: string) => void
   private currentFilePath: string | null = null
-
-  private createLucideIcon(
-    IconComponent: Parameters<typeof createElement>[0],
-    size: number = 16,
-    strokeWidth: number = 1.5,
-    color?: string
-  ): SVGElement | null {
-    // Use Lucide's createElement to create SVG element
-    const svgElement = createElement(IconComponent, {
-      size: size,
-      'stroke-width': strokeWidth,
-      stroke: color || 'currentColor',
-      color: color || 'currentColor'
-    })
-    return svgElement instanceof SVGElement ? svgElement : null
-  }
 
   constructor(containerId: string) {
     this.container = document.getElementById(containerId) as HTMLElement
@@ -201,6 +187,9 @@ export class PreviewComponent {
 
     this.render()
     this.attachEvents()
+
+    this.boundUpdateFontSize = () => this.updateFontSize()
+    window.addEventListener('knowledge-hub:settings-updated', this.boundUpdateFontSize)
   }
 
   setWikiLinkHandler(handler: (target: string) => void): void {
@@ -243,9 +232,43 @@ export class PreviewComponent {
 
   private render(): void {
     this.container.innerHTML = '<div class="preview-content"></div>'
+    this.updateFontSize()
   }
 
   private attachEvents(): void {
+    // Handle wikilink hover preview in preview mode
+    this.container.addEventListener('mouseover', (e) => {
+      const wikiLink = (e.target as HTMLElement).closest('.wiki-link') as HTMLElement
+      if (wikiLink && wikiLink.dataset.wikiLink) {
+        const target = wikiLink.dataset.wikiLink
+        void wikiLinkPreviewModal.show(
+          target,
+          wikiLink.getBoundingClientRect(),
+          async (id) => {
+            try {
+              const note = state.notes.find(
+                (n) =>
+                  n.id.toLowerCase() === id.toLowerCase() ||
+                  (n.title && n.title.toLowerCase() === id.toLowerCase()) ||
+                  (n.path && `${n.path}/${n.id}`.toLowerCase() === id.toLowerCase())
+              )
+              if (!note) return null
+              const res = await window.api.loadNote(note.id, note.path)
+              return res?.content || null
+            } catch {
+              return null
+            }
+          }
+        )
+      }
+    })
+    this.container.addEventListener('mouseout', (e) => {
+      const wikiLink = (e.target as HTMLElement).closest('.wiki-link') as HTMLElement
+      if (wikiLink) {
+        wikiLinkPreviewModal.hide(150)
+      }
+    })
+
     // Handle click delegation
     this.container.addEventListener('click', (e) => {
       const target = e.target as HTMLElement
@@ -301,6 +324,7 @@ export class PreviewComponent {
 
   private lastContent: string | null = null
   private renderPending = false
+  private boundUpdateFontSize: () => void
 
   /**
    * Detects if a file is a code file (not markdown) based on extension
@@ -419,12 +443,28 @@ export class PreviewComponent {
     })
   }
 
+  private updateFontSize(): void {
+    const previewContent = this.container.querySelector('.preview-content') as HTMLElement
+    if (previewContent) {
+      previewContent.style.fontSize = `${state.settings?.fontSize ?? 14}px`
+    }
+  }
+
+  private stripFrontmatter(content: string): string {
+    return content.replace(/^---[\s\S]*?\n---\n?/, '')
+  }
+
   private performRender(content: string): void {
     const previewContent = this.container.querySelector('.preview-content') as HTMLElement
     if (!previewContent) return
 
+    this.updateFontSize()
+
     // Save scroll position
     const scrollTop = this.container.scrollTop
+
+    // Strip YAML/TOML frontmatter
+    content = this.stripFrontmatter(content)
 
     // Determine if we need to wrap content in code fence
     let renderContent = content
@@ -481,6 +521,9 @@ export class PreviewComponent {
       }
     })
 
+    // Render mermaid diagrams before code wrapping
+    renderMermaid(previewContent)
+
     // Wrap code blocks with header and add copy buttons
     previewContent.querySelectorAll('pre').forEach((pre) => {
       const preElement = pre as HTMLElement
@@ -491,6 +534,7 @@ export class PreviewComponent {
       // Get language from code element
       const codeElement = preElement.querySelector('code')
       const language = codeElement?.className?.replace('language-', '') || ''
+      if (language === 'mermaid') return // already handled by renderMermaid
       const languageName = language || 'code'
 
       // Create wrapper
@@ -507,37 +551,44 @@ export class PreviewComponent {
       languageLabel.textContent = languageName
       header.appendChild(languageLabel)
 
-      // Copy button with Lucide icons
-      const copyButton = document.createElement('button')
-      copyButton.className = 'code-copy-button'
-      const copyIcon = this.createLucideIcon(Copy, 16, 1.5)
-      if (copyIcon) copyButton.appendChild(copyIcon)
-      copyButton.title = 'Copy code'
+      const actions = document.createElement('div')
+      actions.style.display = 'flex'
+      actions.style.gap = '4px'
 
-      copyButton.addEventListener('click', async () => {
+      const copyBtn = document.createElement('button')
+      copyBtn.className = 'code-copy-button'
+      copyBtn.title = 'Copy code'
+      copyBtn.dataset.restoreIcon = copyIcon
+      copyBtn.dataset.restoreTitle = 'Copy code'
+      copyBtn.innerHTML = copyIcon
+      copyBtn.addEventListener('click', async () => {
         const code = preElement.querySelector('code')
         if (code) {
-          const text = code.textContent || ''
           try {
-            await navigator.clipboard.writeText(text)
-            // Show green checkmark using Lucide Check icon
-            const checkIcon = this.createLucideIcon(Check, 16, 2, '#22c55e')
-            if (checkIcon) copyButton.replaceChildren(checkIcon)
-            copyButton.title = 'Copied!'
-            copyButton.classList.add('copied')
-            setTimeout(() => {
-              const resetIcon = this.createLucideIcon(Copy, 16, 1.5)
-              if (resetIcon) copyButton.replaceChildren(resetIcon)
-              copyButton.title = 'Copy code'
-              copyButton.classList.remove('copied')
-            }, 2000)
-          } catch (err) {
-            console.error('Failed to copy code:', err)
-          }
+            await navigator.clipboard.writeText(code.textContent || '')
+            flashButton(copyBtn, checkIcon(), 'Copied!')
+          } catch { /* ignore */ }
         }
       })
 
-      header.appendChild(copyButton)
+      const imgBtn = document.createElement('button')
+      imgBtn.className = 'code-copy-button'
+      imgBtn.title = 'Copy as image'
+      imgBtn.dataset.restoreIcon = imageIcon
+      imgBtn.dataset.restoreTitle = 'Copy as image'
+      imgBtn.innerHTML = imageIcon
+      imgBtn.addEventListener('click', async () => {
+        try {
+          await copyHtmlAsImage(preElement)
+          flashButton(imgBtn, checkIcon(), 'Copied image!')
+        } catch {
+          flashButton(imgBtn, failIcon, 'Failed')
+        }
+      })
+
+      actions.appendChild(copyBtn)
+      actions.appendChild(imgBtn)
+      header.appendChild(actions)
 
       // Wrap the pre element
       preElement.parentNode?.insertBefore(wrapper, preElement)
@@ -568,6 +619,7 @@ export class PreviewComponent {
   }
 
   destroy(): void {
+    window.removeEventListener('knowledge-hub:settings-updated', this.boundUpdateFontSize)
     this.clear()
     this.container.innerHTML = ''
   }

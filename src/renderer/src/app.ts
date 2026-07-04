@@ -219,6 +219,21 @@ class App {
     this.registerGlobalCommands()
 
     window.addEventListener('resize', () => this.editor.layout())
+    window.addEventListener(
+      'wheel',
+      (e: WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+          if (
+            e.target instanceof Node &&
+            document.querySelector('.monaco-editor')?.contains(e.target)
+          ) {
+            return
+          }
+          e.preventDefault()
+        }
+      },
+      { passive: false }
+    )
     window.addEventListener('delete-active-note', () => {
       if (state.activeId) {
         const note = state.notes.find((n) => n.id === state.activeId)

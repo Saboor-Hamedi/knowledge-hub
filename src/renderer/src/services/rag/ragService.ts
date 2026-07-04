@@ -103,6 +103,9 @@ export class RagService {
    * Initialize the RAG system (Worker + DB)
    */
   async init(): Promise<void> {
+    if (!this.embeddingProvider) {
+      await this.configureProvider('local')
+    }
     if (this.initPromise) return this.initPromise
 
     this.initPromise = (async () => {
@@ -154,7 +157,8 @@ export class RagService {
   async indexNote(
     noteId: string,
     content: string,
-    metadata: { title: string; path?: string }
+    metadata: { title: string; path?: string; updatedAt?: number },
+    contentHash?: string
   ): Promise<void> {
     if (!this.embeddingProvider) return
 
@@ -165,13 +169,21 @@ export class RagService {
 
     try {
       if (this.embeddingProvider instanceof LocalEmbeddingProvider) {
-        await this.dispatch('index', { id: noteId, content, metadata })
+        await this.dispatch('index', { id: noteId, content, metadata, updatedAt: metadata?.updatedAt, contentHash })
       } else {
         const vector = await this.embeddingProvider.embed(content)
-        await this.dispatch('index', { id: noteId, vector, metadata })
+        await this.dispatch('index', { id: noteId, vector, metadata, updatedAt: metadata?.updatedAt, contentHash })
       }
     } catch (err) {
       console.error(`[RagService] Failed to index note ${noteId}:`, err)
+    }
+  }
+
+  async updateMetadata(noteId: string, updatedAt: number, contentHash?: string): Promise<void> {
+    try {
+      await this.dispatch('update-metadata', { id: noteId, updatedAt, contentHash })
+    } catch (err) {
+      console.error(`[RagService] Failed to update metadata for note ${noteId}:`, err)
     }
   }
 

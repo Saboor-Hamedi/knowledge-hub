@@ -1,0 +1,12 @@
+.preview-content .mermaid {
+  padding: 16px;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.preview-content .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}

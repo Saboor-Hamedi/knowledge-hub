@@ -48,6 +48,8 @@ export class GraphView {
   private minimapScale = 1
   private minimapMinX = 0
   private minimapMinY = 0
+  private lastMinimapUpdate = 0
+  private zoomSaveTimeout: ReturnType<typeof setTimeout> | null = null
 
   // D3 selections
   private linkSelection: d3.Selection<SVGLineElement, GraphLink, SVGGElement, unknown> | null = null
@@ -121,6 +123,18 @@ export class GraphView {
       <div class="graph-modal__toolbar" id="graph-toolbar"></div>
       <div class="graph-modal__view-area">
         <div class="graph-modal__canvas" id="graph-canvas"></div>
+        <div class="graph-floating-controls" id="graph-floating-controls">
+          <button class="graph-floating-btn" id="floating-zoom-in" title="Zoom In (+)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <button class="graph-floating-btn" id="floating-zoom-out" title="Zoom Out (-)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <div class="graph-floating-divider"></div>
+          <button class="graph-floating-btn" id="floating-zoom-reset" title="Reset Zoom">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path></svg>
+          </button>
+        </div>
         <div class="graph-modal__side-panels">
           <div class="graph-modal__minimap" id="graph-minimap"></div>
           <div class="graph-modal__legend" id="graph-legend"></div>
@@ -134,6 +148,16 @@ export class GraphView {
     this.root
       .querySelector('#graph-maximize')
       ?.addEventListener('click', () => this.toggleMaximize())
+
+    this.root
+      .querySelector('#floating-zoom-in')
+      ?.addEventListener('click', () => this.handleZoom(1.3))
+    this.root
+      .querySelector('#floating-zoom-out')
+      ?.addEventListener('click', () => this.handleZoom(0.7))
+    this.root
+      .querySelector('#floating-zoom-reset')
+      ?.addEventListener('click', () => this.handleZoomReset())
 
     const header = this.root.querySelector('.window-header') as HTMLElement
     const content = this.root.querySelector('.graph-modal__content') as HTMLElement
@@ -227,10 +251,14 @@ export class GraphView {
     }
     await this.initGraph()
 
-    // Warm up the simulation and then fit to view
+    // Warm up the simulation and then fit to view or restore previous zoom
     // 300ms gives d3-force enough time to move nodes from their initial stack
     setTimeout(() => {
-      this.zoomToFit(1000)
+      if (state.settings?.graphZoom) {
+        this.restoreZoom(state.settings.graphZoom, 1000)
+      } else {
+        this.zoomToFit(1000)
+      }
     }, 300)
 
     // Ensure it's active
@@ -314,27 +342,14 @@ export class GraphView {
         return
       }
 
-      // Load note contents for tag extraction
-      const noteContents = new Map<string, string>()
-      const notesToLoad = allNotes.filter((n) => n.type !== 'folder').slice(0, 2000) // Increased limit
-
-      console.log(`[Graph] Loading content for ${notesToLoad.length} files...`)
-
-      await Promise.all(
-        notesToLoad.map(async (note) => {
-          try {
-            const loaded = await window.api.loadNote(note.id, note.path)
-            if (loaded?.content) {
-              noteContents.set(note.id, loaded.content)
-            }
-          } catch {
-            // Ignore load errors
-          }
-        })
+      // Process graph data directly from backend
+      this.graphData = processGraphData(
+        allNotes,
+        graphData.links || [],
+        graphData.codeLinks || [],
+        graphData.tags || {},
+        state.activeId
       )
-
-      // Process graph data
-      this.graphData = processGraphData(allNotes, graphData.links, noteContents, state.activeId)
       this.filteredData = this.graphData
 
       // Generate group colors
@@ -499,6 +514,16 @@ export class GraphView {
         this.g?.attr('transform', event.transform)
         // Perform a lightweight viewport-only update to avoid flickering
         this.updateMinimapViewport()
+
+        if (this.zoomSaveTimeout) clearTimeout(this.zoomSaveTimeout)
+        this.zoomSaveTimeout = setTimeout(() => {
+          const transform = event.transform
+          if (transform && state.settings) {
+            const graphZoom = { x: transform.x, y: transform.y, k: transform.k }
+            state.settings.graphZoom = graphZoom
+            window.api.updateSettings({ graphZoom }).catch(console.error)
+          }
+        }, 500)
       })
 
     this.svg.call(this.zoom)
@@ -533,6 +558,13 @@ export class GraphView {
       .force('y', d3.forceY(height / 2).strength(0.05))
 
     this.simulation?.on('tick', () => this.tick())
+    this.simulation?.on('end', () => {
+      if (!this.minimapG && this.filteredData) {
+        this.updateMinimap()
+      } else {
+        this.updateMinimapPositions(true)
+      }
+    })
   }
 
   private renderGraph(): void {
@@ -581,6 +613,8 @@ export class GraphView {
             this.dragEnded(event, d)
           )
       )
+
+    if (!this.nodeSelection) return
 
     // Base Sphere (Shadow/Color)
     this.nodeSelection
@@ -982,6 +1016,22 @@ export class GraphView {
     }
   }
 
+  public restoreZoom(zoomState: { x: number; y: number; k: number }, duration = 750): void {
+    if (!this.svg || !this.zoom) return
+    const transform = d3.zoomIdentity.translate(zoomState.x, zoomState.y).scale(zoomState.k)
+    if (duration > 0) {
+      this.svg
+        .transition()
+        .duration(duration)
+        .ease(d3.easeCubicInOut)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .call(this.zoom.transform as any, transform)
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.svg.call(this.zoom.transform as any, transform)
+    }
+  }
+
   private handleZoomReset(): void {
     this.zoomToFit(500)
   }
@@ -1178,8 +1228,11 @@ export class GraphView {
     this.updateMinimapPositions()
   }
 
-  private updateMinimapPositions(): void {
+  private updateMinimapPositions(force = false): void {
     if (!this.minimapG || !this.filteredData) return
+    const now = Date.now()
+    if (!force && now - this.lastMinimapUpdate < 150) return
+    this.lastMinimapUpdate = now
 
     const nodes = this.filteredData.nodes.filter((n) => isFinite(n.x!) && isFinite(n.y!))
     if (nodes.length === 0) return

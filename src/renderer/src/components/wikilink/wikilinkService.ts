@@ -19,25 +19,40 @@ export class WikiLinkService {
    * Resolves a wiki link target to a NoteMeta object
    */
   resolveNote(target: string): NoteMeta | undefined {
-    const cleanTarget = target.toLowerCase()
+    const cleanTarget = target.trim().toLowerCase()
+    const targetNoExt = cleanTarget.endsWith('.md') ? cleanTarget.slice(0, -3) : cleanTarget
 
-    // 1. Exact match (ID, Path, Title)
-    let note = state.notes.find(
-      (n) =>
-        n.id.toLowerCase() === cleanTarget ||
-        (n.path && `${n.path}/${n.id}`.toLowerCase() === cleanTarget) ||
-        (n.title && n.title.toLowerCase() === cleanTarget)
-    )
-
-    // 2. Strip extension if present (e.g. "note.md" -> "note")
-    if (!note && cleanTarget.endsWith('.md')) {
-      const base = cleanTarget.slice(0, -3)
-      note = state.notes.find(
-        (n) => n.id.toLowerCase() === base || (n.title && n.title.toLowerCase() === base)
-      )
+    const getBasename = (p: string): string => {
+      const parts = p.split(/[/\\]/)
+      return parts[parts.length - 1]
     }
 
-    return note
+    return state.notes.find((n) => {
+      const idLow = n.id.toLowerCase()
+      const idNoExt = idLow.endsWith('.md') ? idLow.slice(0, -3) : idLow
+      const baseLow = getBasename(idLow)
+      const baseNoExt = baseLow.endsWith('.md') ? baseLow.slice(0, -3) : baseLow
+      const titleLow = (n.title || '').toLowerCase()
+      const fullPathLow = (n.path ? `${n.path}/${n.id}` : n.id).toLowerCase()
+      const fullPathNoExt = fullPathLow.endsWith('.md') ? fullPathLow.slice(0, -3) : fullPathLow
+
+      return (
+        idLow === cleanTarget ||
+        idLow === targetNoExt ||
+        idNoExt === cleanTarget ||
+        idNoExt === targetNoExt ||
+        baseLow === cleanTarget ||
+        baseLow === targetNoExt ||
+        baseNoExt === cleanTarget ||
+        baseNoExt === targetNoExt ||
+        titleLow === cleanTarget ||
+        titleLow === targetNoExt ||
+        fullPathLow === cleanTarget ||
+        fullPathLow === targetNoExt ||
+        fullPathNoExt === cleanTarget ||
+        fullPathNoExt === targetNoExt
+      )
+    })
   }
 
   /**

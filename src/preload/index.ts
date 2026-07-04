@@ -61,6 +61,7 @@ type AppSettings = {
   caretMaxWidth?: number
   cursorPositions?: Record<string, { lineNumber: number; column: number }>
   graphTheme?: string
+  graphZoom?: { x: number; y: number; k: number }
   // Security & Lock screen settings
   fireWall?: {
     passwordHash?: string | null
@@ -172,8 +173,11 @@ const api = {
   searchNotes: (query: string, options?: Record<string, unknown>): Promise<NoteMeta[]> =>
     ipcRenderer.invoke('notes:search', query, options),
   getBacklinks: (id: string): Promise<string[]> => ipcRenderer.invoke('notes:getBacklinks', id),
-  getGraph: (): Promise<{ links: { source: string; target: string }[] }> =>
-    ipcRenderer.invoke('graph:get'),
+  getGraph: (): Promise<{
+    links: { source: string; target: string }[]
+    tags?: Record<string, string[]>
+    codeLinks?: { source: string; target: string }[]
+  }> => ipcRenderer.invoke('graph:get'),
   getGitStatus: (): Promise<Record<string, string>> => ipcRenderer.invoke('git:status'),
   getGitInfo: (
     forcedPath?: string

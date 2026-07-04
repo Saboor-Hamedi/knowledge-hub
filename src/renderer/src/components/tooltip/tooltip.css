@@ -16,8 +16,10 @@
   transform: translateY(3px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); /* Slimmer shadow */
   white-space: normal;
-  word-break: break-all;
-  max-width: 400px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 260px;
   line-height: 1.4;
   overflow: visible;
   backdrop-filter: blur(16px);
@@ -53,4 +55,13 @@
 .custom-tooltip.pos-top::after {
   bottom: -4px;
   transform: rotate(225deg);
+}
+
+/* Arrow on the left pointing left (when tooltip is side-by-side to the right of sidebar items) */
+.custom-tooltip.pos-right::after {
+  left: -4px;
+  top: var(--tooltip-arrow-offset-y, 50%);
+  margin-left: 0;
+  margin-top: -3px;
+  transform: rotate(-45deg);
 }

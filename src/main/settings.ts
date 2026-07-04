@@ -41,6 +41,7 @@ export type Settings = {
   caretMaxWidth?: number
   cursorPositions?: Record<string, { lineNumber: number; column: number }>
   graphTheme?: string
+  graphZoom?: { x: number; y: number; k: number }
   // Security & Lock screen settings
   fireWall?: {
     passwordHash?: string | null

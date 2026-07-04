@@ -107,7 +107,8 @@ async function handleJob(job: RagWorkerJob) {
       case 'embed': {
         const { text } = payload
         if (!extractor) await initModel()
-        const output = await extractor(text, { pooling: 'mean', normalize: true })
+        const truncatedText = (text || '').slice(0, 2500)
+        const output = await extractor(truncatedText, { pooling: 'mean', normalize: true })
         result = Array.from(output.data)
         break
       }
@@ -166,7 +167,8 @@ async function handleJob(job: RagWorkerJob) {
 
         if (content && !finalVector) {
           if (!extractor) await initModel()
-          const output = await extractor(content, { pooling: 'mean', normalize: true })
+          const truncatedContent = content.slice(0, 2500)
+          const output = await extractor(truncatedContent, { pooling: 'mean', normalize: true })
           finalVector = Array.from(output.data)
           if (!contentHash) {
             contentHash = await computeHash(content)
@@ -178,8 +180,8 @@ async function handleJob(job: RagWorkerJob) {
           id,
           vector: new Float32Array(finalVector),
           contentHash,
-          metadata: { ...metadata, path: metadata.path || '' },
-          updatedAt: Date.now()
+          metadata: { ...metadata, path: metadata?.path || '' },
+          updatedAt: payload.updatedAt || metadata?.updatedAt || Date.now()
         })
         result = { indexed: true, id, contentHash }
         break
@@ -189,6 +191,13 @@ async function handleJob(job: RagWorkerJob) {
         const { id } = payload
         await db.delete(id)
         result = { deleted: true, id }
+        break
+      }
+
+      case 'update-metadata': {
+        const { id, updatedAt, contentHash } = payload
+        await db.updateMetadata(id, updatedAt, contentHash)
+        result = { updated: true, id }
         break
       }
 

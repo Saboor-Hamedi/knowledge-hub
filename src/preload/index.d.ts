@@ -69,6 +69,7 @@ type AppSettings = {
   caretMaxWidth?: number
   cursorPositions?: Record<string, { lineNumber: number; column: number }>
   graphTheme?: string
+  graphZoom?: { x: number; y: number; k: number }
   // Security & Lock screen settings
   fireWall?: {
     passwordHash?: string | null
@@ -166,7 +167,11 @@ type NoteApi = {
     options?: { matchCase?: boolean; wholeWord?: boolean; useRegex?: boolean }
   ) => Promise<NoteMeta[]>
   getBacklinks: (id: string) => Promise<string[]>
-  getGraph: () => Promise<{ links: { source: string; target: string }[] }>
+  getGraph: () => Promise<{
+    links: { source: string; target: string }[]
+    tags?: Record<string, string[]>
+    codeLinks?: { source: string; target: string }[]
+  }>
   getGitStatus: () => Promise<Record<string, string>>
   getGitInfo: (
     forcedPath?: string

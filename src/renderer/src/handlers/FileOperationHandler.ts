@@ -229,7 +229,8 @@ export class FileOperationHandler {
       ragService
         .indexNote(payload.id, payload.content, {
           title: meta.title,
-          path: meta.path
+          path: meta.path,
+          updatedAt: meta.updatedAt
         })
         .catch(console.error)
     } else {
@@ -285,7 +286,8 @@ export class FileOperationHandler {
       if (note) {
         await ragService.indexNote(actualNewId, note.content, {
           title: newMeta.title,
-          path: newMeta.path
+          path: newMeta.path,
+          updatedAt: note.updatedAt || newMeta.updatedAt
         })
       }
     } catch (err) {
@@ -334,7 +336,8 @@ export class FileOperationHandler {
       if (note) {
         await ragService.indexNote(newMeta.id, note.content, {
           title: newMeta.title,
-          path: newMeta.path
+          path: newMeta.path,
+          updatedAt: note.updatedAt || newMeta.updatedAt
         })
       }
     } catch (error) {

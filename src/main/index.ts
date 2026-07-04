@@ -328,27 +328,58 @@ app.whenReady().then(async () => {
 
   app.on('browser-window-created', (_, window) => {
     if (is.dev) {
-      optimizer.watchWindowShortcuts(window)
+      optimizer.watchWindowShortcuts(window, { zoom: false })
     }
   })
 
   // Set up Application Menu
   const isMac = process.platform === 'darwin'
-  const viewMenu: MenuItemConstructorOptions = is.dev
-    ? { role: 'viewMenu' }
-    : {
-        label: 'View',
-        submenu: [
-          { role: 'reload' },
-          { role: 'forceReload' },
-          { type: 'separator' },
-          { role: 'resetZoom' },
-          { role: 'zoomIn' },
-          { role: 'zoomOut' },
-          { type: 'separator' },
-          { role: 'togglefullscreen' }
-        ]
+  const viewSubmenu: MenuItemConstructorOptions[] = [
+    { role: 'reload' },
+    { role: 'forceReload' }
+  ]
+  if (is.dev) {
+    viewSubmenu.push({ role: 'toggleDevTools' })
+  }
+  viewSubmenu.push(
+    { type: 'separator' },
+    {
+      label: 'Reset Zoom',
+      accelerator: 'CommandOrControl+0',
+      click: (_, focusedWindow): void => {
+        focusedWindow?.webContents.send('editor:zoom', 'reset')
       }
+    },
+    {
+      label: 'Zoom In',
+      accelerator: 'CommandOrControl+Plus',
+      click: (_, focusedWindow): void => {
+        focusedWindow?.webContents.send('editor:zoom', 'in')
+      }
+    },
+    {
+      label: 'Zoom In (Secondary)',
+      accelerator: 'CommandOrControl+=',
+      visible: false,
+      click: (_, focusedWindow): void => {
+        focusedWindow?.webContents.send('editor:zoom', 'in')
+      }
+    },
+    {
+      label: 'Zoom Out',
+      accelerator: 'CommandOrControl+-',
+      click: (_, focusedWindow): void => {
+        focusedWindow?.webContents.send('editor:zoom', 'out')
+      }
+    },
+    { type: 'separator' },
+    { role: 'togglefullscreen' }
+  )
+
+  const viewMenu: MenuItemConstructorOptions = {
+    label: 'View',
+    submenu: viewSubmenu
+  }
 
   const template: MenuItemConstructorOptions[] = [
     {
@@ -619,7 +650,13 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('graph:get', async (event) => {
     const v = getVaultManager(event.sender)
-    return v ? { links: v.getAllLinks() } : { links: [] }
+    return v
+      ? {
+          links: v.getAllLinks(),
+          tags: v.getAllTags(),
+          codeLinks: v.getAllCodeLinks()
+        }
+      : { links: [], tags: {}, codeLinks: [] }
   })
 
   ipcMain.handle('assets:save', async (event, buffer: ArrayBuffer, name: string) => {

@@ -20,6 +20,12 @@ export type ThemeColors = {
   '--glass-border': string
   '--shadow-subtle': string
   '--shadow-strong': string
+  '--syntax-keyword': string
+  '--syntax-string': string
+  '--syntax-comment': string
+  '--syntax-number': string
+  '--syntax-builtin': string
+  '--syntax-type': string
 }
 
 export type Theme = {
@@ -28,11 +34,33 @@ export type Theme = {
   colors: ThemeColors
 }
 
+const darkSyntax = {
+  '--syntax-keyword': '#c678dd',
+  '--syntax-string': '#98c379',
+  '--syntax-comment': '#5c6370',
+  '--syntax-number': '#d19a66',
+  '--syntax-builtin': '#e5c07b',
+  '--syntax-type': '#56b6c2'
+}
+
+const lightSyntax = {
+  '--syntax-keyword': '#d73a49',
+  '--syntax-string': '#032f62',
+  '--syntax-comment': '#6a737d',
+  '--syntax-number': '#005cc5',
+  '--syntax-builtin': '#6f42c1',
+  '--syntax-type': '#005cc5'
+}
+
+function withSyntax(colors: Record<string, string>): ThemeColors {
+  return { ...colors, ...darkSyntax } as ThemeColors
+}
+
 export const themes: Record<string, Theme> = {
   dark: {
     id: 'dark',
     name: 'Hub Dark (Default)',
-    colors: {
+    colors: withSyntax({
       '--bg': '#0a0b10',
       '--bg-accent': '#0f1117',
       '--panel': '#12141c',
@@ -54,7 +82,7 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(255, 255, 255, 0.08)',
       '--shadow-subtle': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       '--shadow-strong': '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)'
-    }
+    })
   },
   light: {
     id: 'light',
@@ -80,13 +108,14 @@ export const themes: Record<string, Theme> = {
       '--glass-bg': 'rgba(255, 255, 255, 0.7)',
       '--glass-border': 'rgba(0, 0, 0, 0.08)',
       '--shadow-subtle': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-      '--shadow-strong': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
-    }
+      '--shadow-strong': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+      ...lightSyntax
+    } as ThemeColors
   },
   githubDark: {
     id: 'githubDark',
     name: 'GitHub Dark',
-    colors: {
+    colors: withSyntax({
       '--bg': '#0d1117',
       '--bg-accent': '#161b22',
       '--panel': '#0d1117',
@@ -108,12 +137,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(48, 54, 61, 0.5)',
       '--shadow-subtle': '0 1px 3px rgba(0,0,0,0.12)',
       '--shadow-strong': '0 4px 12px rgba(0,0,0,0.25)'
-    }
+    })
   },
   midnight: {
     id: 'midnight',
     name: 'OLED Midnight',
-    colors: {
+    colors: withSyntax({
       '--bg': '#000000',
       '--bg-accent': '#050505',
       '--panel': '#000000',
@@ -135,12 +164,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(255, 255, 255, 0.06)',
       '--shadow-subtle': '0 0 0 1px rgba(255, 255, 255, 0.05)',
       '--shadow-strong': '0 0 40px rgba(167, 139, 250, 0.05)'
-    }
+    })
   },
   oceanic: {
     id: 'oceanic',
     name: 'Oceanic Pro',
-    colors: {
+    colors: withSyntax({
       '--bg': '#0f172a',
       '--bg-accent': '#1e293b',
       '--panel': '#0f172a',
@@ -162,12 +191,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(56, 189, 248, 0.1)',
       '--shadow-subtle': '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
       '--shadow-strong': '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
-    }
+    })
   },
   synthwave: {
     id: 'synthwave',
     name: 'Cyberpunk 84',
-    colors: {
+    colors: withSyntax({
       '--bg': '#2b213a',
       '--bg-accent': '#261b36',
       '--panel': '#241b2f',
@@ -189,12 +218,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(255, 126, 219, 0.2)',
       '--shadow-subtle': '0 0 10px rgba(255, 126, 219, 0.1)',
       '--shadow-strong': '0 0 30px rgba(255, 126, 219, 0.2)'
-    }
+    })
   },
   nord: {
     id: 'nord',
     name: 'Nordic Frost',
-    colors: {
+    colors: withSyntax({
       '--bg': '#2e3440',
       '--bg-accent': '#3b4252',
       '--panel': '#3b4252',
@@ -216,12 +245,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(136, 192, 208, 0.1)',
       '--shadow-subtle': '0 1px 3px rgba(0,0,0,0.1)',
       '--shadow-strong': '0 4px 12px rgba(0,0,0,0.2)'
-    }
+    })
   },
   dracula: {
     id: 'dracula',
     name: 'Dracula Plus',
-    colors: {
+    colors: withSyntax({
       '--bg': '#282a36',
       '--bg-accent': '#21222c',
       '--panel': '#282a36',
@@ -243,12 +272,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(189, 147, 249, 0.1)',
       '--shadow-subtle': '0 2px 4px rgba(0,0,0,0.1)',
       '--shadow-strong': '0 8px 16px rgba(0,0,0,0.2)'
-    }
+    })
   },
   lucy: {
     id: 'lucy',
     name: 'Lucy',
-    colors: {
+    colors: withSyntax({
       '--bg': '#161616',
       '--bg-accent': '#1b1b1b',
       '--panel': '#161616',
@@ -270,12 +299,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(255, 121, 198, 0.15)',
       '--shadow-subtle': '0 4px 6px rgba(0,0,0,0.2)',
       '--shadow-strong': '0 10px 20px rgba(0,0,0,0.4)'
-    }
+    })
   },
   cyberpunk2077: {
     id: 'cyberpunk2077',
     name: 'Cyberpunk 2077',
-    colors: {
+    colors: withSyntax({
       '--bg': '#000000',
       '--bg-accent': '#000000',
       '--panel': '#000000',
@@ -297,12 +326,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(243, 230, 0, 0.3)',
       '--shadow-subtle': '0 0 10px rgba(243, 230, 0, 0.2)',
       '--shadow-strong': '0 0 30px rgba(0, 240, 255, 0.2)'
-    }
+    })
   },
   pitchBlack: {
     id: 'pitchBlack',
     name: 'Pitch Black',
-    colors: {
+    colors: withSyntax({
       '--bg': '#000000',
       '--bg-accent': '#000000',
       '--panel': '#000000',
@@ -324,12 +353,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(255, 255, 255, 0.1)',
       '--shadow-subtle': '0 0 0 1px #222222',
       '--shadow-strong': '0 0 0 1px #333333'
-    }
+    })
   },
   deepdark: {
     id: 'deepdark',
     name: 'Deepdark Material',
-    colors: {
+    colors: withSyntax({
       '--bg': '#111111',
       '--bg-accent': '#151515',
       '--panel': '#111111',
@@ -351,12 +380,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(0, 229, 255, 0.1)',
       '--shadow-subtle': '0 4px 6px rgba(0,0,0,0.3)',
       '--shadow-strong': '0 10px 30px rgba(0,0,0,0.5)'
-    }
+    })
   },
   popnlock: {
     id: 'popnlock',
-    name: 'Pop N’ Lock',
-    colors: {
+    name: 'Pop N\u2019 Lock',
+    colors: withSyntax({
       '--bg': '#2b2d3a',
       '--bg-accent': '#21232d',
       '--panel': '#2b2d3a',
@@ -378,12 +407,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(247, 118, 142, 0.15)',
       '--shadow-subtle': '0 2px 5px rgba(0,0,0,0.2)',
       '--shadow-strong': '0 10px 25px rgba(0,0,0,0.4)'
-    }
+    })
   },
   sapphire: {
     id: 'sapphire',
     name: 'Sapphire Theme',
-    colors: {
+    colors: withSyntax({
       '--bg': '#0f1419',
       '--bg-accent': '#121920',
       '--panel': '#0f1419',
@@ -405,12 +434,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(45, 90, 247, 0.15)',
       '--shadow-subtle': '0 2px 8px rgba(0,0,0,0.3)',
       '--shadow-strong': '0 12px 32px rgba(0,0,0,0.5)'
-    }
+    })
   },
   peacock: {
     id: 'peacock',
     name: 'Peacock',
-    colors: {
+    colors: withSyntax({
       '--bg': '#0d1912',
       '--bg-accent': '#112118',
       '--panel': '#0d1912',
@@ -432,12 +461,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(0, 255, 208, 0.1)',
       '--shadow-subtle': '0 4px 10px rgba(0,0,0,0.4)',
       '--shadow-strong': '0 12px 40px rgba(0,0,0,0.6)'
-    }
+    })
   },
   winter: {
     id: 'winter',
     name: 'Winter',
-    colors: {
+    colors: withSyntax({
       '--bg': '#1b2b34',
       '--bg-accent': '#22343f',
       '--panel': '#1b2b34',
@@ -459,12 +488,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(102, 153, 204, 0.15)',
       '--shadow-subtle': '0 2px 6px rgba(0,0,0,0.2)',
       '--shadow-strong': '0 15px 35px rgba(0,0,0,0.3)'
-    }
+    })
   },
   onedark: {
     id: 'onedark',
     name: 'One Dark Pro',
-    colors: {
+    colors: withSyntax({
       '--bg': '#282c34',
       '--bg-accent': '#21252b',
       '--panel': '#282c34',
@@ -486,12 +515,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(97, 175, 239, 0.15)',
       '--shadow-subtle': '0 4px 6px rgba(0,0,0,0.15)',
       '--shadow-strong': '0 10px 20px rgba(0,0,0,0.25)'
-    }
+    })
   },
   synthwave84: {
     id: 'synthwave84',
-    name: 'Synthwave ’84',
-    colors: {
+    name: 'Synthwave \u201984',
+    colors: withSyntax({
       '--bg': '#262335',
       '--bg-accent': '#241b2f',
       '--panel': '#262335',
@@ -513,12 +542,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(255, 126, 219, 0.25)',
       '--shadow-subtle': '0 0 15px rgba(255, 126, 219, 0.2)',
       '--shadow-strong': '0 0 40px rgba(255, 126, 219, 0.3)'
-    }
+    })
   },
   atomone: {
     id: 'atomone',
     name: 'Atom One Dark',
-    colors: {
+    colors: withSyntax({
       '--bg': '#282c34',
       '--bg-accent': '#21252b',
       '--panel': '#282c34',
@@ -540,12 +569,12 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(82, 139, 255, 0.15)',
       '--shadow-subtle': '0 2px 4px rgba(0,0,0,0.2)',
       '--shadow-strong': '0 10px 20px rgba(0,0,0,0.3)'
-    }
+    })
   },
   nightowl: {
     id: 'nightowl',
     name: 'Night Owl',
-    colors: {
+    colors: withSyntax({
       '--bg': '#011627',
       '--bg-accent': '#01111d',
       '--panel': '#011627',
@@ -567,6 +596,6 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(130, 170, 255, 0.15)',
       '--shadow-subtle': '0 5px 10px rgba(0,0,0,0.3)',
       '--shadow-strong': '0 15px 35px rgba(0,0,0,0.5)'
-    }
+    })
   }
 }

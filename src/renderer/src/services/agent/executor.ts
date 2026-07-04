@@ -191,7 +191,11 @@ export class AgentExecutor {
         path: meta.path
       } as NotePayload)
 
-      void ragService.indexNote(meta.id, content, { title: meta.title, path: meta.path })
+      void ragService.indexNote(meta.id, content, {
+        title: meta.title,
+        path: meta.path,
+        updatedAt: meta.updatedAt
+      })
       this.dispatchVaultChange()
       this.refreshActiveNoteIfNeeded(meta.id, meta.path)
 
@@ -240,7 +244,11 @@ export class AgentExecutor {
         path: note.path
       } as NotePayload)
 
-      void ragService.indexNote(note.id, newContent, { title: note.title, path: note.path })
+      void ragService.indexNote(note.id, newContent, {
+        title: note.title,
+        path: note.path,
+        updatedAt: note.updatedAt
+      })
       this.refreshActiveNoteIfNeeded(note.id, note.path)
       return result
     })
@@ -283,7 +291,11 @@ export class AgentExecutor {
         path: note.path
       } as NotePayload)
 
-      void ragService.indexNote(note.id, updatedContent, { title: note.title, path: note.path })
+      void ragService.indexNote(note.id, updatedContent, {
+        title: note.title,
+        path: note.path,
+        updatedAt: note.updatedAt
+      })
       this.refreshActiveNoteIfNeeded(note.id, note.path)
       return result
     })
@@ -324,7 +336,11 @@ export class AgentExecutor {
           path: note.path
         } as NotePayload)
 
-        void ragService.indexNote(note.id, newContent, { title: note.title, path: note.path })
+        void ragService.indexNote(note.id, newContent, {
+          title: note.title,
+          path: note.path,
+          updatedAt: note.updatedAt
+        })
         this.refreshActiveNoteIfNeeded(note.id, note.path)
         return result
       }

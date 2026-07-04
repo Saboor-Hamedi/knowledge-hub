@@ -54,34 +54,55 @@ export class TooltipManager {
 
       this.el.textContent = text
       this.el.classList.add('is-visible')
+      this.el.style.opacity = ''
 
       const rect = target.getBoundingClientRect()
       const tooltipRect = this.el.getBoundingClientRect()
 
-      let top = rect.bottom + 6
-      const left = rect.left + rect.width / 2 - tooltipRect.width / 2
-
-      // Position logic: prefer bottom, switch to top if no space
+      const sidebar = target.closest('.sidebar') || target.closest('#sidebar') || target.closest('.tree-item') || target.closest('.sidebar__tree-item')
+      let top: number
+      let clampedLeft: number
       let positionClass = 'pos-bottom'
-      if (top + tooltipRect.height > window.innerHeight - 10) {
-        top = rect.top - tooltipRect.height - 6
-        positionClass = 'pos-top'
+
+      if (sidebar) {
+        // Position side-by-side out of the sidebar, to the right over the editor
+        positionClass = 'pos-right'
+        const sidebarEl = target.closest('#sidebar') || target.closest('.sidebar') || document.getElementById('sidebar')
+        const leftPos = Math.max(rect.right, sidebarEl ? sidebarEl.getBoundingClientRect().right : rect.right) + 8
+        const maxLeft = window.innerWidth - tooltipRect.width - 10
+        clampedLeft = Math.min(maxLeft, leftPos)
+
+        top = rect.top + (rect.height - tooltipRect.height) / 2
+        top = Math.max(10, Math.min(window.innerHeight - tooltipRect.height - 10, top))
+
+        const arrowOffsetY = rect.top + rect.height / 2 - top
+        this.el.style.setProperty('--tooltip-arrow-offset-y', `${Math.max(8, Math.min(tooltipRect.height - 8, arrowOffsetY))}px`)
+      } else {
+        top = rect.bottom + 6
+        const left = rect.left + rect.width / 2 - tooltipRect.width / 2
+
+        // Position logic: prefer bottom, switch to top if no space
+        positionClass = 'pos-bottom'
+        if (top + tooltipRect.height > window.innerHeight - 10) {
+          top = rect.top - tooltipRect.height - 6
+          positionClass = 'pos-top'
+        }
+
+        // Horizontal bounds
+        const minLeft = 10
+        const maxLeft = window.innerWidth - tooltipRect.width - 10
+        clampedLeft = Math.max(minLeft, Math.min(maxLeft, left))
+
+        // Calculate arrow offset relative to tooltip
+        const targetCenter = rect.left + rect.width / 2
+        const arrowOffset = targetCenter - clampedLeft
+        this.el.style.setProperty('--tooltip-arrow-offset', `${arrowOffset}px`)
       }
-
-      // Horizontal bounds
-      const minLeft = 10
-      const maxLeft = window.innerWidth - tooltipRect.width - 10
-      const clampedLeft = Math.max(minLeft, Math.min(maxLeft, left))
-
-      // Calculate arrow offset relative to tooltip
-      const targetCenter = rect.left + rect.width / 2
-      const arrowOffset = targetCenter - clampedLeft
-      this.el.style.setProperty('--tooltip-arrow-offset', `${arrowOffset}px`)
 
       this.el.className = `custom-tooltip is-visible ${positionClass}`
       this.el.style.top = `${top}px`
       this.el.style.left = `${clampedLeft}px`
-    }, 300)
+    }, 40)
   }
 
   public hide(): void {

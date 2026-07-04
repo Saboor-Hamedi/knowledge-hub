@@ -116,6 +116,8 @@ export class VaultManager {
   private folders = new Set<string>()
   private links = new Map<string, Set<string>>() // Source -> Targets
   private backlinks = new Map<string, Set<string>>() // Target -> Sources
+  private tags = new Map<string, Set<string>>() // Source -> Tags
+  private codeLinks = new Map<string, Set<string>>() // Source -> Code target names
   private folderMetasCache: NoteMeta[] = []
   private folderCacheValid: boolean = false
 
@@ -143,6 +145,8 @@ export class VaultManager {
     this.folders.clear()
     this.links.clear()
     this.backlinks.clear()
+    this.tags.clear()
+    this.codeLinks.clear()
     this.folderCacheValid = false
 
     await this.startWatcher()
@@ -368,10 +372,126 @@ export class VaultManager {
     }
 
     this.links.set(sourceId, links)
+    this.updateTags(sourceId, content)
+    this.updateCodeLinks(sourceId, content)
+  }
+
+  private updateTags(sourceId: string, content: string): void {
+    const tags = new Set<string>()
+
+    // Frontmatter tags: tags: [tag1, tag2] or tags: tag1, tag2
+    const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+    if (frontmatterMatch) {
+      const frontmatter = frontmatterMatch[1]
+      const tagsMatch = frontmatter.match(/tags:\s*\[?(.*?)\]?\s*$/m)
+      if (tagsMatch) {
+        const tagStr = tagsMatch[1]
+        tagStr
+          .split(',')
+          .map((t) => t.trim().replace(/['"]/g, ''))
+          .filter(Boolean)
+          .forEach((t) => tags.add(t))
+      }
+    }
+
+    // Inline tags: #tag (not in code blocks)
+    const inlineTagRegex = /(?:^|\s)#([a-zA-Z][a-zA-Z0-9_-]*)/g
+    let match: RegExpExecArray | null
+    while ((match = inlineTagRegex.exec(content)) !== null) {
+      if (match[1]) tags.add(match[1])
+    }
+
+    this.tags.set(sourceId, tags)
+  }
+
+  private updateCodeLinks(sourceId: string, content: string): void {
+    const codeLinks = new Set<string>()
+    const addTarget = (target?: string): void => {
+      if (target && target !== sourceId) {
+        codeLinks.add(target)
+      }
+    }
+
+    // 1. JS/TS/React: import ... from '...', require('...')
+    const jsImportRegex = /(?:import\s+.*?from\s+['"]([^'"]+)['"])|(?:require\(['"]([^'"]+)['"]\))/g
+    let match: RegExpExecArray | null
+    while ((match = jsImportRegex.exec(content)) !== null) {
+      const importPath = match[1] || match[2]
+      if (importPath) {
+        const filename = importPath.split('/').pop()?.replace(/\.[^/.]+$/, '')
+        addTarget(filename)
+      }
+    }
+
+    // 2. PHP Includes
+    const phpIncludeRegex = /(?:include|include_once|require|require_once)\s*(?:\(?\s*['"]([^'"]+)['"]\s*\)?)/g
+    while ((match = phpIncludeRegex.exec(content)) !== null) {
+      const includePath = match[1]
+      if (includePath) {
+        const filename = includePath.split('/').pop()?.replace(/\.[^/.]+$/, '')
+        addTarget(filename)
+      }
+    }
+
+    // 3. PHP Use Statements
+    const phpUseRegex = /use\s+([a-zA-Z0-9_\\]+)(?:\s+as\s+[a-zA-Z0-9_]+)?;/g
+    while ((match = phpUseRegex.exec(content)) !== null) {
+      const fullNamespace = match[1]
+      if (fullNamespace) {
+        const className = fullNamespace.split('\\').pop()
+        addTarget(className)
+      }
+    }
+
+    // 4. Static Calls (e.g. User::all())
+    const staticCallRegex = /([A-Z][a-zA-Z0-9_]*)::/g
+    while ((match = staticCallRegex.exec(content)) !== null) {
+      if (match[1]) addTarget(match[1])
+    }
+
+    // 5. Python Imports
+    const pythonImportRegex = /(?:from\s+([a-zA-Z0-9_.]+)\s+import)|(?:import\s+([a-zA-Z0-9_.]+))/g
+    while ((match = pythonImportRegex.exec(content)) !== null) {
+      const moduleName = match[1] || match[2]
+      if (moduleName) {
+        const filename = moduleName.split('.').pop()
+        addTarget(filename)
+      }
+    }
+
+    // 6. C/C++ Includes
+    const cIncludeRegex = /#include\s*["<]([^">]+)[">]/g
+    while ((match = cIncludeRegex.exec(content)) !== null) {
+      const includePath = match[1]
+      if (includePath) {
+        const filename = includePath.split('/').pop()?.replace(/\.[^/.]+$/, '')
+        addTarget(filename)
+      }
+    }
+
+    // 7. Ruby Requires
+    const rubyRequireRegex = /(?:require|require_relative)\s*['"]([^'"]+)['"]/g
+    while ((match = rubyRequireRegex.exec(content)) !== null) {
+      const path = match[1]
+      if (path) {
+        const filename = path.split('/').pop()?.replace(/\.[^/.]+$/, '')
+        addTarget(filename)
+      }
+    }
+
+    // 8. Class Instantiation: new ClassName()
+    const classRegex = /new\s+([A-Z][a-zA-Z0-9_]*)/g
+    while ((match = classRegex.exec(content)) !== null) {
+      if (match[1]) addTarget(match[1])
+    }
+
+    this.codeLinks.set(sourceId, codeLinks)
   }
 
   private removeLinks(sourceId: string): void {
     this.links.delete(sourceId)
+    this.tags.delete(sourceId)
+    this.codeLinks.delete(sourceId)
   }
 
   // --- Public API for Renderer ---
@@ -1021,6 +1141,24 @@ export class VaultManager {
   public getAllLinks(): { source: string; target: string }[] {
     const links: { source: string; target: string }[] = []
     for (const [source, targets] of this.links.entries()) {
+      for (const target of targets) {
+        links.push({ source, target })
+      }
+    }
+    return links
+  }
+
+  public getAllTags(): Record<string, string[]> {
+    const tags: Record<string, string[]> = {}
+    for (const [source, tagSet] of this.tags.entries()) {
+      tags[source] = Array.from(tagSet)
+    }
+    return tags
+  }
+
+  public getAllCodeLinks(): { source: string; target: string }[] {
+    const links: { source: string; target: string }[] = []
+    for (const [source, targets] of this.codeLinks.entries()) {
       for (const target of targets) {
         links.push({ source, target })
       }

@@ -104,6 +104,15 @@ export class VectorDB {
     })
   }
 
+  async updateMetadata(id: string, updatedAt: number, contentHash?: string): Promise<void> {
+    const record = await this.get(id)
+    if (record) {
+      record.updatedAt = updatedAt
+      if (contentHash) record.contentHash = contentHash
+      await this.upsert(record)
+    }
+  }
+
   async count(): Promise<number> {
     await this.ensureConnection()
     return new Promise((resolve, reject) => {

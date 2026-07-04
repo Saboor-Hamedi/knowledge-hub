@@ -377,7 +377,8 @@ export class EditorComponent {
     try {
       const wikilinkProviders = registerWikiLinkProviders(
         this.monacoInstance,
-        this.onGetHoverContent
+        this.onGetHoverContent,
+        (target) => this.onLinkClick?.(target)
       )
       this.providers.push(...wikilinkProviders)
     } catch (err) {
@@ -627,6 +628,7 @@ export class EditorComponent {
           minimap: { enabled: this.cachedSettings?.minimap ?? false },
           wordWrap: this.cachedSettings?.wordWrap ? 'on' : 'off',
           fontSize: this.cachedSettings?.fontSize ?? 14,
+          mouseWheelZoom: true,
           padding: { top: 12, bottom: 12 },
           renderWhitespace: 'selection',
           lineNumbers: this.cachedSettings?.lineNumbers !== false ? 'on' : 'off',
@@ -693,7 +695,8 @@ export class EditorComponent {
           if (this.onGetHoverContent && this.monacoInstance) {
             const wikilinkProviders = registerWikiLinkProviders(
               this.monacoInstance,
-              this.onGetHoverContent
+              this.onGetHoverContent,
+              (target) => this.onLinkClick?.(target)
             )
             this.providers.push(...wikilinkProviders)
           }
@@ -756,6 +759,18 @@ export class EditorComponent {
 
         // Initialize Suggestion Manager
         this.suggestionManager = new SuggestionManager(this.editor, this.monacoInstance)
+
+        // Listen for IPC zoom events from Application Menu
+        window.api.on('editor:zoom', (action: unknown) => {
+          if (!this.editor) return
+          if (action === 'in') {
+            this.editor.trigger('keyboard', 'editor.action.fontZoomIn', {})
+          } else if (action === 'out') {
+            this.editor.trigger('keyboard', 'editor.action.fontZoomOut', {})
+          } else if (action === 'reset') {
+            this.editor.trigger('keyboard', 'editor.action.fontZoomReset', {})
+          }
+        })
       } finally {
         this.initPromise = null
       }
@@ -997,7 +1012,7 @@ export class EditorComponent {
     const scrollTop = this.editor.getScrollTop()
     const scrollLeft = this.editor.getScrollLeft()
 
-    const options: any = {}
+    const options: any = { mouseWheelZoom: true }
 
     if (settings.fontSize) {
       options.fontSize = settings.fontSize

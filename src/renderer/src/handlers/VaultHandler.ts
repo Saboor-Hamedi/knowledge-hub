@@ -10,6 +10,7 @@ import { notificationManager } from '../components/notification/notification'
 
 export class VaultHandler {
   private refreshDebounceTimer: number | null = null
+  private indexingPromise: Promise<void> | null = null
 
   constructor(
     public components: {
@@ -378,8 +379,19 @@ export class VaultHandler {
   }
 
   public async backgroundIndexVault(): Promise<void> {
+    if (this.indexingPromise) {
+      return this.indexingPromise
+    }
+    this.indexingPromise = this.doBackgroundIndexVault().finally(() => {
+      this.indexingPromise = null
+    })
+    return this.indexingPromise
+  }
+
+  private async doBackgroundIndexVault(): Promise<void> {
     const notesToIndex = state.notes
     let indexedCount = 0
+    let processedCount = 0
     let isInitialized = false
 
     aiStatusManager.show('AI Brain: Checking...')
@@ -412,11 +424,8 @@ export class VaultHandler {
     // Filter notes that actually need re-indexing
     const potentiallyChanged = notesToIndex.filter((note) => {
       const meta = existingMetadata[note.id]
-      // If we don't even have metadata, it definitely needs indexing
       if (!meta) return true
-      // If the timestamp is exactly the same, we can trust it (fast path)
       if (note.updatedAt === meta.updatedAt) return false
-      // Otherwise, we rely on the hash check later in the loop to be 100% sure
       return true
     })
 
@@ -427,16 +436,19 @@ export class VaultHandler {
 
     for (const note of potentiallyChanged) {
       try {
+        processedCount++
         const content = (await window.api.loadNote(note.id, note.path)) as NotePayload | null
-        if (!content || !content.content.trim() || content.content.length > 1024 * 1024) continue
+        if (!content || !content.content.trim() || content.content.length > 1024 * 1024) {
+          aiStatusManager.updateProgress(processedCount, potentiallyChanged.length)
+          continue
+        }
 
-        // Verification: If timestamp differed, check the actual content hash
+        const currentHash = await computeHash(content.content)
         const meta = existingMetadata[note.id]
-        if (meta && meta.contentHash) {
-          const currentHash = await computeHash(content.content)
-          if (currentHash === meta.contentHash) {
-            continue // Content hasn't changed despite timestamp diff
-          }
+        if (meta && meta.contentHash && currentHash === meta.contentHash) {
+          await ragService.updateMetadata(note.id, note.updatedAt, currentHash)
+          aiStatusManager.updateProgress(processedCount, potentiallyChanged.length)
+          continue
         }
 
         if (!isInitialized) {
@@ -445,12 +457,18 @@ export class VaultHandler {
           isInitialized = true
         }
 
-        await ragService.indexNote(note.id, content.content, {
-          title: note.title,
-          path: note.path
-        })
+        await ragService.indexNote(
+          note.id,
+          content.content,
+          {
+            title: note.title,
+            path: note.path,
+            updatedAt: note.updatedAt
+          },
+          currentHash
+        )
         indexedCount++
-        aiStatusManager.updateProgress(indexedCount, potentiallyChanged.length)
+        aiStatusManager.updateProgress(processedCount, potentiallyChanged.length)
       } catch (e) {
         console.warn(`[RAG] Failed to index note ${note.title}:`, e)
       }

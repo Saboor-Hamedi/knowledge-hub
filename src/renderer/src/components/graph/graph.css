@@ -1143,3 +1143,50 @@
   display: flex;
   overflow: hidden;
 }
+
+/* Floating Zoom Controls for Graph View */
+.graph-floating-controls {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel, #1e1e24);
+  border: 1px solid var(--border, #33333f);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  gap: 4px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.graph-floating-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-normal, #e0e0e0);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.graph-floating-btn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--accent, #4daafc);
+}
+
+.graph-floating-btn:active {
+  transform: scale(0.95);
+}
+
+.graph-floating-divider {
+  height: 1px;
+  width: 100%;
+  background: var(--border, #33333f);
+  margin: 2px 0;
+}

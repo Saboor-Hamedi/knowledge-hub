@@ -127,8 +127,9 @@ export function getNodeRadius(node: GraphNode, minRadius = 7, maxRadius = 32): n
 export function processGraphData(
   notes: NoteMeta[],
   links: { source: string; target: string }[],
-  noteContents: Map<string, string>,
-  activeId: string | null
+  codeLinks: { source: string; target: string }[] = [],
+  tagsRecord: Record<string, string[]> = {},
+  activeId: string | null = null
 ): GraphData {
   const nodeMap = new Map<string, GraphNode>()
   const clusters = new Map<string, string[]>()
@@ -145,8 +146,7 @@ export function processGraphData(
       folderToGroup.set(folderPath, groupCounter++)
     }
 
-    const content = noteContents.get(note.id) || ''
-    const tags = extractTags(content)
+    const tags = tagsRecord[note.id] || []
 
     const node: GraphNode = {
       id: note.id,
@@ -254,128 +254,28 @@ export function processGraphData(
     }
   }
 
-  // Detect Code Dependencies (Imports / Class Usage)
+  // Process Code Dependencies
+  for (const link of codeLinks) {
+    const sourceNode = nodeMap.get(link.source)
+    const targetNode = resolveTarget(link.target)
 
-  // Regex Definitions (Global for performance)
-  // 1. JS/TS/React: import ... from '...', require('...')
-  const jsImportRegex = /(?:import\s+.*?from\s+['"]([^'"]+)['"])|(?:require\(['"]([^'"]+)['"]\))/g
+    if (!sourceNode || !targetNode) continue
+    if (sourceNode.id === targetNode.id) continue
 
-  // 2. Class Instantiation: new ClassName() (PHP, Java, TS, C#, etc)
-  const classRegex = /new\s+([A-Z][a-zA-Z0-9_]*)/g
+    const forwardKey = `${sourceNode.id}->${targetNode.id}`
+    const reverseKey = `${targetNode.id}->${sourceNode.id}`
 
-  // 3. PHP: include 'file.php', require_once('file.php'), use App\Models\User, Class::method()
-  const phpIncludeRegex =
-    /(?:include|include_once|require|require_once)\s*(?:\(?\s*['"]([^'"]+)['"]\s*\)?)/g
-  const phpUseRegex = /use\s+([a-zA-Z0-9_\\]+)(?:\s+as\s+[a-zA-Z0-9_]+)?;/g
-  const staticCallRegex = /([A-Z][a-zA-Z0-9_]*)::/g
-
-  // 4. Python: import module, from module import ...
-  const pythonImportRegex = /(?:from\s+([a-zA-Z0-9_.]+)\s+import)|(?:import\s+([a-zA-Z0-9_.]+))/g
-
-  // 5. C/C++: #include "file.h" or <file.h>
-  const cIncludeRegex = /#include\s*["<]([^">]+)[">]/g
-
-  // 6. Ruby: require 'file', require_relative 'file'
-  const rubyRequireRegex = /(?:require|require_relative)\s*['"]([^'"]+)['"]/g
-
-  for (const note of notes) {
-    if (note.type === 'folder') continue
-    const content = noteContents.get(note.id) || ''
-    if (!content) continue
-
-    const sourceNode = nodeMap.get(note.id)
-    if (!sourceNode) continue
-
-    // Helper to connect nodes
-    const connectNode = (targetName: string): void => {
-      const targetNode = resolveTarget(targetName)
-      if (targetNode && targetNode.id !== sourceNode!.id) {
-        const key = `${sourceNode!.id}->${targetNode.id}`
-        if (!linkMap.has(key)) {
-          linkMap.set(key, {
-            source: sourceNode!.id,
-            target: targetNode.id,
-            bidirectional: false,
-            weight: 0.5
-          })
-          sourceNode!.outgoingCount++
-          targetNode.incomingCount++
-          sourceNode!.isOrphan = false
-          targetNode.isOrphan = false
-        }
-      }
-    }
-
-    let match
-
-    // Process JS/TS Imports
-    while ((match = jsImportRegex.exec(content)) !== null) {
-      const importPath = match[1] || match[2]
-      if (!importPath) continue
-      const filename = importPath
-        .split('/')
-        .pop()
-        ?.replace(/\.[^/.]+$/, '')
-      if (filename) connectNode(filename)
-    }
-
-    // Process PHP Includes
-    while ((match = phpIncludeRegex.exec(content)) !== null) {
-      const includePath = match[1]
-      const filename = includePath
-        .split('/')
-        .pop()
-        ?.replace(/\.[^/.]+$/, '')
-      if (filename) connectNode(filename)
-    }
-
-    // Process PHP Use Statements (Namespaces)
-    while ((match = phpUseRegex.exec(content)) !== null) {
-      const fullNamespace = match[1]
-      const className = fullNamespace.split('\\').pop()
-      if (className) connectNode(className)
-    }
-
-    // Process Static Calls (e.g. User::all())
-    while ((match = staticCallRegex.exec(content)) !== null) {
-      const className = match[1]
-      connectNode(className)
-    }
-
-    // Process Python Imports
-    while ((match = pythonImportRegex.exec(content)) !== null) {
-      const moduleName = match[1] || match[2]
-      if (!moduleName) continue
-      // Python modules correspond to filenames, often exact matches
-      // Handle dot notation: from my.utils import -> my/utils.py -> utils
-      const filename = moduleName.split('.').pop()
-      if (filename) connectNode(filename)
-    }
-
-    // Process C/C++ Includes
-    while ((match = cIncludeRegex.exec(content)) !== null) {
-      const includePath = match[1]
-      const filename = includePath
-        .split('/')
-        .pop()
-        ?.replace(/\.[^/.]+$/, '') // strip .h
-      if (filename) connectNode(filename)
-    }
-
-    // Process Ruby Requires
-    while ((match = rubyRequireRegex.exec(content)) !== null) {
-      const path = match[1]
-      const filename = path
-        .split('/')
-        .pop()
-        ?.replace(/\.[^/.]+$/, '')
-      if (filename) connectNode(filename)
-    }
-
-    // Process Classes (General)
-    while ((match = classRegex.exec(content)) !== null) {
-      const className = match[1]
-      connectNode(className)
+    if (!linkMap.has(forwardKey) && !linkMap.has(reverseKey)) {
+      linkMap.set(forwardKey, {
+        source: sourceNode.id,
+        target: targetNode.id,
+        bidirectional: false,
+        weight: 0.5
+      })
+      sourceNode.outgoingCount++
+      targetNode.incomingCount++
+      sourceNode.isOrphan = false
+      targetNode.isOrphan = false
     }
   }
 

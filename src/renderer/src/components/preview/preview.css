@@ -3,9 +3,8 @@
   max-width: 100%;
   line-height: 1.6;
   color: var(--text-strong);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
-    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Consolas', 'Courier New', 'Ubuntu Mono', 'Liberation Mono', monospace;
+  font-optical-sizing: auto;
 }
 
 /* Headings */
@@ -98,35 +97,6 @@
   margin-top: 2px;
 }
 
-/* Code block wrapper */
-.code-block-wrapper {
-  margin: 16px 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  /* overflow: hidden; Removed to prevent potential scroll locking */
-  background: var(--panel-strong);
-}
-
-/* Code block header */
-.code-block-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  min-height: 36px;
-}
-
-.code-block-language {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-}
-
 /* Code blocks */
 .preview-content pre {
   background: var(--panel-strong);
@@ -135,46 +105,8 @@
   padding: 16px;
   overflow-x: auto;
   margin: 0;
-  font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
+  font-size: inherit;
   line-height: 1.45;
-}
-
-/* Copy button for code blocks */
-.code-copy-button {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: all 120ms ease;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.code-copy-button:hover {
-  background: var(--primary);
-  color: #0b1220;
-  border-color: var(--primary);
-}
-
-.code-copy-button.copied {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: #22c55e;
-  color: #22c55e;
-}
-
-.code-copy-button svg {
-  width: 14px;
-  height: 14px;
-  stroke: currentColor;
-  fill: none;
-  display: block;
 }
 
 .preview-content pre code {
@@ -191,9 +123,8 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   padding: 2px 6px;
-  font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 0.9em;
-  color: #e06c75;
+  font-size: inherit;
+  color: var(--syntax-string);
 }
 
 .preview-content pre code {
@@ -263,7 +194,7 @@
   height: auto;
   border-radius: 6px;
   margin: 16px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-subtle);
 }
 
 /* Task lists */
@@ -282,11 +213,31 @@
   font-style: italic;
 }
 
-/* Highlight.js overrides for better theme integration */
+/* Syntax highlighting using theme variables */
 .preview-content .hljs {
   background: var(--panel-strong) !important;
   color: var(--text-strong) !important;
 }
+.preview-content .hljs-keyword,
+.preview-content .hljs-selector-tag,
+.preview-content .hljs-literal,
+.preview-content .hljs-section { color: var(--syntax-keyword); }
+.preview-content .hljs-string,
+.preview-content .hljs-regexp,
+.preview-content .hljs-addition,
+.preview-content .hljs-attribute { color: var(--syntax-string); }
+.preview-content .hljs-comment,
+.preview-content .hljs-quote { color: var(--syntax-comment); font-style: italic; }
+.preview-content .hljs-number,
+.preview-content .hljs-deletion { color: var(--syntax-number); }
+.preview-content .hljs-built_in,
+.preview-content .hljs-selector-class { color: var(--syntax-builtin); }
+.preview-content .hljs-type,
+.preview-content .hljs-selector-id { color: var(--syntax-type); }
+.preview-content .hljs-title,
+.preview-content .hljs-title.function_ { color: var(--syntax-keyword); }
+.preview-content .hljs-attr { color: var(--syntax-string); }
+.preview-content .hljs-variable { color: var(--text); }
 
 /* Scrollbar styling for code blocks */
 .preview-content pre::-webkit-scrollbar {
@@ -307,15 +258,15 @@
   background: var(--muted);
 }
 
-/* Tags and Mentions */
+/* Syntax highlighting using theme variables */
 .preview-content .tag {
-  color: #d19a66; /* Orange/Yellowish */
+  color: var(--syntax-number);
   display: inline-block;
   cursor: pointer;
 }
 
 .preview-content .mention {
-  color: #61afef; /* Blue */
+  color: var(--syntax-type);
   display: inline-block;
   font-weight: 500;
   cursor: pointer;
@@ -329,42 +280,10 @@
   flex-direction: column;
 }
 
-.preview-content.is-full-file .code-block-wrapper {
-  margin: 0;
-  border: none;
-  border-radius: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.preview-content.is-full-file .code-block-header {
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  min-height: 28px;
-  padding: 4px 12px;
-}
-
-.preview-content.is-full-file .code-block-language {
-  font-size: 10px;
-  line-height: 1;
-}
-
-.preview-content.is-full-file .code-copy-button {
-  width: 24px;
-  height: 24px;
-}
-
 .preview-content.is-full-file pre {
   margin: 0;
   border: none;
   border-radius: 0;
   flex: 1;
-  /* Scroll is handled by parent container */
   overflow: visible;
 }

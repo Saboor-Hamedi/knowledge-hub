@@ -3,6 +3,7 @@ export interface TooltipOptions {
   delay?: number
   interactive?: boolean
   ignoreSafeZone?: boolean
+  maxWidth?: number
 }
 
 export class RichTooltip {
@@ -14,13 +15,16 @@ export class RichTooltip {
 
   constructor(options: TooltipOptions = {}) {
     this.options = {
-      delay: 100,
+      delay: 50,
       interactive: true,
       ...options
     }
 
     this.el = document.createElement('div')
     this.el.className = `rich-tooltip ${this.options.className || ''}`
+    if (this.options.maxWidth) {
+      this.el.style.maxWidth = `${this.options.maxWidth}px`
+    }
     document.body.appendChild(this.el)
 
     if (this.options.interactive) {
@@ -108,6 +112,30 @@ export class RichTooltip {
     // 1. Measure dimensions after content is updated
     this.el.style.display = 'flex' // Ensure it's measurable
     const tooltipRect = this.el.getBoundingClientRect()
+
+    const sidebar = this.currentTarget?.closest('.sidebar') || this.currentTarget?.closest('#sidebar') || this.currentTarget?.closest('.tree-item') || this.currentTarget?.closest('.sidebar__tree-item')
+    if (sidebar) {
+      const sidebarEl = this.currentTarget?.closest('#sidebar') || this.currentTarget?.closest('.sidebar') || document.getElementById('sidebar')
+      const leftPos = Math.max(rect.right, sidebarEl ? sidebarEl.getBoundingClientRect().right : rect.right) + 8
+      const maxLeft = window.innerWidth - tooltipRect.width - 12
+      const clampedLeft = Math.min(maxLeft, leftPos)
+
+      let top = rect.top + (rect.height - tooltipRect.height) / 2
+      top = Math.max(12, Math.min(window.innerHeight - tooltipRect.height - 12, top))
+
+      this.el.style.left = `${clampedLeft}px`
+      this.el.style.top = `${top}px`
+      this.el.style.bottom = 'auto'
+      this.el.style.right = 'auto'
+      this.el.classList.add('pos-right')
+
+      const arrowOffsetY = rect.top + rect.height / 2 - top
+      this.el.style.setProperty('--tooltip-arrow-offset-y', `${Math.max(10, Math.min(tooltipRect.height - 10, arrowOffsetY))}px`)
+      return
+    } else {
+      this.el.classList.remove('pos-right')
+      this.el.style.top = 'auto'
+    }
 
     // 2. Center above the target
     const targetCenterX = rect.left + rect.width / 2

@@ -377,7 +377,6 @@ export class VaultHandler {
         activeId: state.activeId,
         pinnedTabs: Array.from(state.pinnedTabs),
         cursorPositions: Object.fromEntries(state.cursorPositions),
-        sidebarVisible: state.settings?.sidebarVisible,
         splitViewRatio: state.settings?.splitViewRatio,
         splitViewEnabled: state.settings?.splitViewEnabled
       } as Partial<AppSettings>)

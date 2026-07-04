@@ -23,51 +23,19 @@ export function flashButton(btn: HTMLButtonElement, html: string, title: string)
   }, 2000)
 }
 
-function collectCSSVars(): string {
+function cssVars(): string {
   const root = document.documentElement
-  const vars = [
-    '--bg', '--bg-accent', '--panel', '--panel-strong', '--border',
-    '--muted', '--text', '--text-strong', '--text-soft', '--text-muted',
-    '--primary', '--primary-strong', '--danger', '--status',
-    '--syntax-keyword', '--syntax-string', '--syntax-comment',
-    '--syntax-number', '--syntax-builtin', '--syntax-type'
+  const keys = [
+    '--bg','--bg-accent','--panel','--panel-strong','--border','--border-subtle',
+    '--muted','--text','--text-strong','--text-soft','--text-muted',
+    '--primary','--primary-strong','--danger','--status',
+    '--syntax-keyword','--syntax-string','--syntax-comment',
+    '--syntax-number','--syntax-builtin','--syntax-type'
   ]
-  return vars.map((v) => `${v}: ${getComputedStyle(root).getPropertyValue(v)}`).join(';')
+  return keys.map((k) => `${k}:${getComputedStyle(root).getPropertyValue(k)}`).join(';')
 }
 
-function svgWithVars(w: number, h: number, inner: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-    <defs><style>:root{${collectCSSVars()}}*{color:inherit}</style></defs>
-    ${inner}
-  </svg>`
-}
-
-function inlineStyles(src: HTMLElement, dst: HTMLElement): void {
-  const srcStyle = getComputedStyle(src)
-  const props = [
-    'color', 'background', 'background-color', 'font-family', 'font-size',
-    'font-weight', 'font-style', 'line-height', 'text-align', 'padding',
-    'margin', 'border', 'border-radius', 'white-space', 'overflow',
-    'display', 'opacity', 'text-transform', 'letter-spacing'
-  ]
-  for (const p of props) {
-    const val = srcStyle.getPropertyValue(p)
-    if (val) dst.style.setProperty(p, val)
-  }
-  for (let i = 0; i < src.children.length; i++) {
-    inlineStyles(src.children[i] as HTMLElement, dst.children[i] as HTMLElement)
-  }
-}
-
-async function canvasToClip(canvas: HTMLCanvasElement): Promise<void> {
-  const pngBlob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, 'image/png')
-  )
-  if (!pngBlob) throw new Error('Canvas toBlob failed')
-  await navigator.clipboard.write([
-    new ClipboardItem({ 'image/png': pngBlob })
-  ])
-}
+// ── SVG → PNG (used by mermaid) ────────────────────────────────────────
 
 export async function copySvgAsImage(svgEl: SVGElement): Promise<void> {
   const rect = svgEl.getBoundingClientRect()
@@ -78,51 +46,115 @@ export async function copySvgAsImage(svgEl: SVGElement): Promise<void> {
   const clone = svgEl.cloneNode(true) as SVGElement
   clone.setAttribute('width', String(w))
   clone.setAttribute('height', String(h))
-  const defs = clone.querySelector('defs') || clone.insertBefore(document.createElementNS('http://www.w3.org/2000/svg', 'defs'), clone.firstChild)
+  const defs = clone.querySelector('defs') || clone.insertBefore(
+    document.createElementNS('http://www.w3.org/2000/svg', 'defs'), clone.firstChild
+  )
   const style = document.createElementNS('http://www.w3.org/2000/svg', 'style')
-  style.textContent = `:root{${collectCSSVars()}}*{color:inherit}`
+  style.textContent = `:root{${cssVars()}}*{color:inherit}`
   defs.appendChild(style)
 
-  const svgString = new XMLSerializer().serializeToString(clone)
-  const img = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`)
-  const canvas = document.createElement('canvas')
-  const scale = 2
-  canvas.width = w * scale
-  canvas.height = h * scale
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(scale, scale)
-  ctx.drawImage(img, 0, 0)
-  await canvasToClip(canvas)
+  const svgStr = new XMLSerializer().serializeToString(clone)
+  const img = await loadImg(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`)
+  await canvasToClip(img, w, h)
 }
+
+// ── Code block → PNG (render text directly on canvas) ──────────────────
 
 export async function copyHtmlAsImage(element: HTMLElement): Promise<void> {
-  const rect = element.getBoundingClientRect()
-  let w = Math.round(rect.width)
-  let h = Math.round(rect.height)
-  if (!w || !h) { w = 800; h = 600 }
+  const code = element.querySelector('code') || element
 
-  const clone = element.cloneNode(true) as HTMLElement
-  inlineStyles(element, clone)
+  const parentStyle = getComputedStyle(element)
+  let bgVar = parentStyle.getPropertyValue('background-color') || ''
+  if (!bgVar || bgVar === 'rgba(0, 0, 0, 0)') bgVar = '--panel-strong'
+  const pad = parseFloat(parentStyle.getPropertyValue('padding')) || 16
+  const family = (parentStyle.getPropertyValue('font-family') || 'Consolas, monospace').split(',')[0].replace(/['"]/g, '')
+  const fontSize = 14
+  const lineH = 1.45
 
-  const fo = `<foreignObject x="0" y="0" width="${w}" height="${h}">${new XMLSerializer().serializeToString(clone)}</foreignObject>`
-  const svgString = svgWithVars(w, h, fo)
-  const img = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`)
+  const root = document.documentElement
+  const bg = bgVar.startsWith('var(') ? getComputedStyle(root).getPropertyValue(bgVar.slice(4, -1)) || '#1a1d27' : bgVar
 
-  const canvas = document.createElement('canvas')
+  // Extract tokens from the DOM, preserving line structure
+  const lines: { text: string; color: string }[][] = [[]]
+  const baseColor = getComputedStyle(code).getPropertyValue('color') || '#e0e0e0'
+  extractTokens(code, baseColor, lines)
+
+  if (lines.length === 1 && lines[0].length === 0) return
+
+  // Measure text dimensions
+  const tmp = document.createElement('canvas')
+  const ctx = tmp.getContext('2d')!
+  ctx.font = `${fontSize}px ${family}`
+  const maxW = Math.max(...lines.map((l) => l.reduce((a, t) => a + ctx.measureText(t.text).width, 0)))
+  const charH = fontSize * lineH
+  const vpW = Math.max(200, Math.min(1200, maxW + pad * 2))
+  const vpH = Math.max(100, lines.length * charH + pad * 2)
+
   const scale = 2
-  canvas.width = w * scale
-  canvas.height = h * scale
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(scale, scale)
-  ctx.drawImage(img, 0, 0)
-  await canvasToClip(canvas)
+  const canvas = document.createElement('canvas')
+  canvas.width = vpW * scale
+  canvas.height = vpH * scale
+  const cx = canvas.getContext('2d')!
+  cx.scale(scale, scale)
+
+  cx.fillStyle = bg
+  cx.fillRect(0, 0, vpW, vpH)
+
+  cx.font = `${fontSize}px ${family}`
+  cx.textBaseline = 'top'
+  let y = pad
+  for (const line of lines) {
+    let x = pad
+    for (const tok of line) {
+      cx.fillStyle = tok.color
+      cx.fillText(tok.text, x, y)
+      x += ctx.measureText(tok.text).width
+    }
+    y += charH
+  }
+
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'))
+  if (!blob) throw new Error('toBlob failed')
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+function extractTokens(el: Node, fallback: string, lines: { text: string; color: string }[][]): void {
+  if (el.nodeType === 3) {
+    const parts = (el.textContent || '').split('\n')
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i]) lines[lines.length - 1].push({ text: parts[i], color: fallback })
+      if (i < parts.length - 1) lines.push([])
+    }
+  } else if (el.nodeType === 1) {
+    const elm = el as HTMLElement
+    const color = getComputedStyle(elm).getPropertyValue('color') || fallback
+    for (const child of elm.childNodes) {
+      extractTokens(child, color, lines)
+    }
+  }
+}
+
+// ── Shared helpers ─────────────────────────────────────────────────────
+
+function loadImg(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error('Image load failed'))
     img.src = src
   })
+}
+
+async function canvasToClip(img: HTMLImageElement, w: number, h: number): Promise<void> {
+  const canvas = document.createElement('canvas')
+  const scale = 2
+  canvas.width = w * scale
+  canvas.height = h * scale
+  const ctx = canvas.getContext('2d')!
+  ctx.scale(scale, scale)
+  ctx.drawImage(img, 0, 0)
+
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'))
+  if (!blob) throw new Error('toBlob failed')
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
 }

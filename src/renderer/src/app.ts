@@ -431,10 +431,15 @@ class App {
       this.editor.applySettings(state.settings)
       await this.realTerminal.applySettings(state.settings)
       // Always restore layout, but force sidebars hidden for new instances
+      let sidebarVisible = state.settings.sidebarVisible
+      const lsSidebar = localStorage.getItem('kb-sidebar')
+      if (lsSidebar !== null) {
+        sidebarVisible = lsSidebar === 'true'
+      }
       this.viewOrchestrator.restoreLayout({
         ...state.settings,
         rightPanelVisible: isNewInstance ? false : state.settings.rightPanelVisible,
-        sidebarVisible: isNewInstance ? false : state.settings.sidebarVisible
+        sidebarVisible: isNewInstance ? false : sidebarVisible
       })
       // Ensure UI components reflect loaded settings immediately
       this.sidebar.applyStyles()
@@ -479,8 +484,9 @@ class App {
       if (state.settings) {
         state.settings.sidebarVisible = visible
       }
-      void window.api.updateSettings({ sidebarVisible: visible })
-      this.activityBar.render() // Force activity bar to reflect change
+      window.api.updateSettings({ sidebarVisible: visible }).catch(() => {})
+      localStorage.setItem('kb-sidebar', String(visible))
+      this.activityBar.render()
     })
 
     this.sidebar.setNoteSelectHandler((id, path, highlight) => {

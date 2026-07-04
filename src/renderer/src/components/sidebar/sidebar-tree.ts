@@ -172,20 +172,28 @@ export class SidebarTree {
     const shell = document.querySelector('.vscode-shell') as HTMLElement
     if (!shell) return
     shell.classList.toggle('sidebar-hidden')
-    this.onVisibilityChange?.(!shell.classList.contains('sidebar-hidden'))
+    const visible = !shell.classList.contains('sidebar-hidden')
+    localStorage.setItem('kb-sidebar', String(visible))
+    this.onVisibilityChange?.(visible)
   }
 
   hide(): void {
     const shell = document.querySelector('.vscode-shell') as HTMLElement
+    const sidebar = document.getElementById('sidebar')
     if (!shell) return
     shell.classList.add('sidebar-hidden')
+    if (sidebar) sidebar.style.display = 'none'
+    localStorage.setItem('kb-sidebar', 'false')
     this.onVisibilityChange?.(false)
   }
 
   show(): void {
     const shell = document.querySelector('.vscode-shell') as HTMLElement
+    const sidebar = document.getElementById('sidebar')
     if (!shell) return
     shell.classList.remove('sidebar-hidden')
+    if (sidebar) sidebar.style.display = ''
+    localStorage.setItem('kb-sidebar', 'true')
     this.onVisibilityChange?.(true)
   }
 

@@ -111,7 +111,11 @@ export class ViewOrchestrator {
       }
     } else {
       if (sidebar) {
-        sidebar.style.display = 'grid'
+        // Only show sidebar if it is not intentionally hidden by the user
+        const shell = document.querySelector('.vscode-shell') as HTMLElement
+        if (!shell?.classList.contains('sidebar-hidden')) {
+          sidebar.style.display = 'grid'
+        }
       }
       if (timelineHost) {
         timelineHost.style.display = 'none'
@@ -136,6 +140,7 @@ export class ViewOrchestrator {
     if (state.settings) {
       state.settings.sidebarVisible = visible
     }
+    localStorage.setItem('kb-sidebar', String(visible))
     void window.api.updateSettings({ sidebarVisible: visible })
   }
 
@@ -333,12 +338,15 @@ export class ViewOrchestrator {
   public restoreLayout(settings: AppSettings): void {
     const shell = document.querySelector('.vscode-shell') as HTMLElement
     const rightPanel = document.getElementById('rightPanel') as HTMLElement
+    const sidebar = document.getElementById('sidebar') as HTMLElement
     if (!shell || !rightPanel) return
 
     if (settings.sidebarVisible === false) {
       shell.classList.add('sidebar-hidden')
+      if (sidebar) sidebar.style.display = 'none'
     } else {
       shell.classList.remove('sidebar-hidden')
+      if (sidebar) sidebar.style.display = ''
     }
 
     if (settings.rightPanelVisible) {

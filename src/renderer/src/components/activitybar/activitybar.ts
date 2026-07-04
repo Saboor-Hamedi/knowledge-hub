@@ -283,6 +283,7 @@ export class ActivityBar {
           state.settings.sidebarVisible = false
           void window.api.updateSettings({ sidebarVisible: false })
         }
+        localStorage.setItem('kb-sidebar', 'false')
         this.onViewChange?.(null)
         return
       }
@@ -305,8 +306,7 @@ export class ActivityBar {
           view === 'history')
       ) {
         state.settings.activeView = view as 'notes' | 'search' | 'settings' | 'graph' | 'history'
-        state.settings.sidebarVisible = true
-        void window.api.updateSettings({ activeView: view, sidebarVisible: true })
+        void window.api.updateSettings({ activeView: view })
       }
 
       this.onViewChange?.(view)

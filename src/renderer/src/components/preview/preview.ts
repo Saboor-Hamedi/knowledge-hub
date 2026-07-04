@@ -234,6 +234,13 @@ export class PreviewComponent {
       ? `\`\`\`${this.getLanguageFromPath(this.currentFilePath!)}\n${content}\n\`\`\``
       : content
 
+    // Save mermaid wrappers before DOM wipe to prevent flash
+    const mermaidSvgMap = new Map<string, string>()
+    previewContent.querySelectorAll('.mermaid svg').forEach((svg) => {
+      const wrapper = svg.closest('.code-block-wrapper')
+      if (wrapper) mermaidSvgMap.set(wrapper.outerHTML, svg.outerHTML)
+    })
+
     previewContent.classList.toggle('is-full-file', !!isCode)
     previewContent.innerHTML = DOMPurify.sanitize(
       this.md.render(renderContent.replace(/!\[\s+([^\]]+)\]/g, '![$1]')),
@@ -242,7 +249,7 @@ export class PreviewComponent {
 
     this.container.scrollTop = scrollTop
     this.resolveImages(previewContent)
-    renderMermaid(previewContent)
+    renderMermaid(previewContent, mermaidSvgMap)
     this.wrapCodeBlocks(previewContent)
     this.rehighlightCode(previewContent)
   }

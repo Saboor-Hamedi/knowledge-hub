@@ -480,6 +480,21 @@ export class VaultManager {
     return exported
   }
 
+  public async getNotesContent(ids: string[]): Promise<Record<string, string>> {
+    const result: Record<string, string> = {}
+    for (const id of ids) {
+      try {
+        const note = await this.getNote(id)
+        if (note?.content) {
+          result[id] = note.content
+        }
+      } catch {
+        // skip
+      }
+    }
+    return result
+  }
+
   public async saveNote(id: string, content: string, _title?: string): Promise<NoteMeta> {
     void _title // Suppress unused parameter warning
     let meta = this.notes.get(id)

@@ -174,6 +174,8 @@ const api = {
   getBacklinks: (id: string): Promise<string[]> => ipcRenderer.invoke('notes:getBacklinks', id),
   getGraph: (): Promise<{ links: { source: string; target: string }[] }> =>
     ipcRenderer.invoke('graph:get'),
+  graphLoadContents: (ids: string[]): Promise<Record<string, string>> =>
+    ipcRenderer.invoke('graph:loadContents', ids),
   getGitStatus: (): Promise<Record<string, string>> => ipcRenderer.invoke('git:status'),
   getGitInfo: (
     forcedPath?: string

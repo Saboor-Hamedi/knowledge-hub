@@ -604,6 +604,10 @@ app.whenReady().then(async () => {
     const v = getVaultManager(event.sender)
     return v ? { links: v.getAllLinks() } : { links: [] }
   })
+  ipcMain.handle('graph:loadContents', async (event, ids: string[]) => {
+    const v = getVaultManager(event.sender)
+    return v ? v.getNotesContent(ids) : {}
+  })
 
   ipcMain.handle('assets:save', async (event, buffer: ArrayBuffer, name: string) => {
     const v = getVaultManager(event.sender)

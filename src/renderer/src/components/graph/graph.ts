@@ -36,6 +36,8 @@ export class GraphView {
   private graphData: GraphData | null = null
   private filteredData: GraphData | null = null
   private groupColors: Map<number, string> = new Map()
+  private isLargeGraph = false
+  private tickCount = 0
   private showLabels = true
   private forceStrength = -500
   private localGraphEnabled = false
@@ -228,13 +230,13 @@ export class GraphView {
     await this.initGraph()
 
     // Warm up the simulation and then fit to view
-    // 300ms gives d3-force enough time to move nodes from their initial stack
+    const initialAlpha = this.isLargeGraph ? 0.15 : 1
     setTimeout(() => {
       this.zoomToFit(1000)
-    }, 300)
+    }, this.isLargeGraph ? 100 : 300)
 
-    // Ensure it's active
-    this.simulation?.alpha(1).restart()
+    // Ensure it's active (lower alpha for large graphs to avoid CPU thrash)
+    this.simulation?.alpha(initialAlpha).restart()
   }
 
   close(): void {
@@ -314,27 +316,15 @@ export class GraphView {
         return
       }
 
-      // Load note contents for tag extraction
-      const noteContents = new Map<string, string>()
-      const notesToLoad = allNotes.filter((n) => n.type !== 'folder').slice(0, 2000) // Increased limit
+      // Bulk load note contents in a single IPC call
+      const noteIds = allNotes.filter((n) => n.type !== 'folder').map((n) => n.id)
+      const contentRecord = await window.api.graphLoadContents(noteIds)
+      const noteContents = new Map(Object.entries(contentRecord))
 
-      console.log(`[Graph] Loading content for ${notesToLoad.length} files...`)
+      this.isLargeGraph = noteIds.length > 500
 
-      await Promise.all(
-        notesToLoad.map(async (note) => {
-          try {
-            const loaded = await window.api.loadNote(note.id, note.path)
-            if (loaded?.content) {
-              noteContents.set(note.id, loaded.content)
-            }
-          } catch {
-            // Ignore load errors
-          }
-        })
-      )
-
-      // Process graph data
-      this.graphData = processGraphData(allNotes, graphData.links, noteContents, state.activeId)
+      // Process graph data (skip expensive code dependency analysis for performance)
+      this.graphData = processGraphData(allNotes, graphData.links, noteContents, state.activeId, false)
       this.filteredData = this.graphData
 
       // Generate group colors
@@ -388,76 +378,75 @@ export class GraphView {
     radialGrad.append('stop').attr('offset', '40%').attr('stop-color', 'rgba(255, 255, 255, 0.1)')
     radialGrad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(0, 0, 0, 0.3)')
 
-    // Glow filter for nodes and links
-    const filter = defs
-      .append('filter')
-      .attr('id', 'glow')
-      .attr('x', '-100%')
-      .attr('y', '-100%')
-      .attr('width', '300%')
-      .attr('height', '300%')
+    if (!this.isLargeGraph) {
+      const filter = defs
+        .append('filter')
+        .attr('id', 'glow')
+        .attr('x', '-100%')
+        .attr('y', '-100%')
+        .attr('width', '300%')
+        .attr('height', '300%')
 
-    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur')
-    const feMerge = filter.append('feMerge')
-    feMerge.append('feMergeNode').attr('in', 'blur')
-    feMerge.append('feMergeNode').attr('in', 'SourceGraphic')
+      filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur')
+      const feMerge = filter.append('feMerge')
+      feMerge.append('feMergeNode').attr('in', 'blur')
+      feMerge.append('feMergeNode').attr('in', 'SourceGraphic')
 
-    // Elite Active Glow (for the central current node)
-    const activeGlow = defs
-      .append('filter')
-      .attr('id', 'active-node-glow')
-      .attr('x', '-200%')
-      .attr('y', '-200%')
-      .attr('width', '500%')
-      .attr('height', '500%')
-    activeGlow.append('feGaussianBlur').attr('stdDeviation', '6').attr('result', 'blur')
-    activeGlow
-      .append('feColorMatrix')
-      .attr('in', 'blur')
-      .attr('type', 'matrix')
-      .attr('values', '0 0 0 0 0.498  0 0 0 0 0.655  0 0 0 0 1  0 0 0 1 0') // primary color glow
-    const activeMerge = activeGlow.append('feMerge')
-    activeMerge.append('feMergeNode')
-    activeMerge.append('feMergeNode').attr('in', 'SourceGraphic')
+      const activeGlow = defs
+        .append('filter')
+        .attr('id', 'active-node-glow')
+        .attr('x', '-200%')
+        .attr('y', '-200%')
+        .attr('width', '500%')
+        .attr('height', '500%')
+      activeGlow.append('feGaussianBlur').attr('stdDeviation', '6').attr('result', 'blur')
+      activeGlow
+        .append('feColorMatrix')
+        .attr('in', 'blur')
+        .attr('type', 'matrix')
+        .attr('values', '0 0 0 0 0.498  0 0 0 0 0.655  0 0 0 0 1  0 0 0 1 0')
+      const activeMerge = activeGlow.append('feMerge')
+      activeMerge.append('feMergeNode')
+      activeMerge.append('feMergeNode').attr('in', 'SourceGraphic')
 
-    // 3D Lighting Filter for robust sphere look
-    const lightingFilter = defs.append('filter').attr('id', 'sphere-lighting')
+      const lightingFilter = defs.append('filter').attr('id', 'sphere-lighting')
 
-    const diffuse = lightingFilter
-      .append('feDiffuseLighting')
-      .attr('in', 'SourceGraphic')
-      .attr('result', 'diffuse')
-      .attr('lighting-color', 'white')
+      const diffuse = lightingFilter
+        .append('feDiffuseLighting')
+        .attr('in', 'SourceGraphic')
+        .attr('result', 'diffuse')
+        .attr('lighting-color', 'white')
 
-    diffuse.append('feDistantLight').attr('azimuth', '45').attr('elevation', '45')
+      diffuse.append('feDistantLight').attr('azimuth', '45').attr('elevation', '45')
 
-    const specular = lightingFilter
-      .append('feSpecularLighting')
-      .attr('in', 'SourceGraphic')
-      .attr('result', 'specular')
-      .attr('specularExponent', '20')
-      .attr('lighting-color', 'white')
+      const specular = lightingFilter
+        .append('feSpecularLighting')
+        .attr('in', 'SourceGraphic')
+        .attr('result', 'specular')
+        .attr('specularExponent', '20')
+        .attr('lighting-color', 'white')
 
-    specular.append('feDistantLight').attr('azimuth', '45').attr('elevation', '45')
+      specular.append('feDistantLight').attr('azimuth', '45').attr('elevation', '45')
 
-    lightingFilter
-      .append('feComposite')
-      .attr('in', 'SourceGraphic')
-      .attr('in2', 'diffuse')
-      .attr('operator', 'arithmetic')
-      .attr('k1', '1')
-      .attr('k2', '0')
-      .attr('k3', '0')
-      .attr('k4', '0')
+      lightingFilter
+        .append('feComposite')
+        .attr('in', 'SourceGraphic')
+        .attr('in2', 'diffuse')
+        .attr('operator', 'arithmetic')
+        .attr('k1', '1')
+        .attr('k2', '0')
+        .attr('k3', '0')
+        .attr('k4', '0')
 
-    lightingFilter
-      .append('feComposite')
-      .attr('in', 'specular')
-      .attr('operator', 'arithmetic')
-      .attr('k1', '0')
-      .attr('k2', '1')
-      .attr('k3', '1')
-      .attr('k4', '0')
+      lightingFilter
+        .append('feComposite')
+        .attr('in', 'specular')
+        .attr('operator', 'arithmetic')
+        .attr('k1', '0')
+        .attr('k2', '1')
+        .attr('k3', '1')
+        .attr('k4', '0')
+    }
 
     // Arrow marker for directed links
     defs
@@ -533,6 +522,9 @@ export class GraphView {
       .force('y', d3.forceY(height / 2).strength(0.05))
 
     this.simulation?.on('tick', () => this.tick())
+    if (this.isLargeGraph) {
+      this.simulation.alphaMin(0.01).on('end', () => this.simulation?.stop())
+    }
   }
 
   private renderGraph(): void {
@@ -589,7 +581,7 @@ export class GraphView {
       .attr('r', (d) => getNodeRadius(d))
       .attr('fill', (d) => this.computeNodeColor(d))
       .style('opacity', (d) => (d.isOrphan ? 0.7 : 1))
-      .style('filter', (d: any) => (d.isActive ? 'url(#active-node-glow)' : 'none'))
+      .style('filter', (d: any) => (d.isActive && !this.isLargeGraph ? 'url(#active-node-glow)' : 'none'))
 
     // Glass Highlight (Procedural 3D Overlay)
     this.nodeSelection
@@ -637,11 +629,14 @@ export class GraphView {
 
     this.nodeSelection.attr('transform', (d) => `translate(${d.x || 0},${d.y || 0})`)
 
-    // Update minimap live
-    if (!this.minimapG && this.filteredData) {
-      this.updateMinimap()
-    } else {
-      this.updateMinimapPositions()
+    // Throttle minimap updates to every 5th tick for performance
+    this.tickCount++
+    if (this.tickCount % 5 === 0) {
+      if (!this.minimapG && this.filteredData) {
+        this.updateMinimap()
+      } else {
+        this.updateMinimapPositions()
+      }
     }
   }
 

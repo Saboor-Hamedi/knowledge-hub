@@ -167,6 +167,7 @@ type NoteApi = {
   ) => Promise<NoteMeta[]>
   getBacklinks: (id: string) => Promise<string[]>
   getGraph: () => Promise<{ links: { source: string; target: string }[] }>
+  graphLoadContents: (ids: string[]) => Promise<Record<string, string>>
   getGitStatus: () => Promise<Record<string, string>>
   getGitInfo: (
     forcedPath?: string

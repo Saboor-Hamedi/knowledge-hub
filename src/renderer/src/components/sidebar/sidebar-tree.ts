@@ -173,7 +173,6 @@ export class SidebarTree {
     if (!shell) return
     shell.classList.toggle('sidebar-hidden')
     const visible = !shell.classList.contains('sidebar-hidden')
-    localStorage.setItem('kb-sidebar', String(visible))
     this.onVisibilityChange?.(visible)
   }
 
@@ -183,7 +182,6 @@ export class SidebarTree {
     if (!shell) return
     shell.classList.add('sidebar-hidden')
     if (sidebar) sidebar.style.display = 'none'
-    localStorage.setItem('kb-sidebar', 'false')
     this.onVisibilityChange?.(false)
   }
 
@@ -193,7 +191,6 @@ export class SidebarTree {
     if (!shell) return
     shell.classList.remove('sidebar-hidden')
     if (sidebar) sidebar.style.display = ''
-    localStorage.setItem('kb-sidebar', 'true')
     this.onVisibilityChange?.(true)
   }
 

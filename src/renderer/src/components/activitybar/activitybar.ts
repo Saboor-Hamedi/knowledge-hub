@@ -283,7 +283,6 @@ export class ActivityBar {
           state.settings.sidebarVisible = false
           void window.api.updateSettings({ sidebarVisible: false })
         }
-        localStorage.setItem('kb-sidebar', 'false')
         this.onViewChange?.(null)
         return
       }

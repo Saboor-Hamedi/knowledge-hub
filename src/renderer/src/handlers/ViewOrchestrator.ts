@@ -140,7 +140,6 @@ export class ViewOrchestrator {
     if (state.settings) {
       state.settings.sidebarVisible = visible
     }
-    localStorage.setItem('kb-sidebar', String(visible))
     void window.api.updateSettings({ sidebarVisible: visible })
   }
 

@@ -430,16 +430,11 @@ class App {
     if (state.settings) {
       this.editor.applySettings(state.settings)
       await this.realTerminal.applySettings(state.settings)
-      // Always restore layout, but force sidebars hidden for new instances
-      let sidebarVisible = state.settings.sidebarVisible
-      const lsSidebar = localStorage.getItem('kb-sidebar')
-      if (lsSidebar !== null) {
-        sidebarVisible = lsSidebar === 'true'
-      }
+      // Always restore layout from saved settings.json values
       this.viewOrchestrator.restoreLayout({
         ...state.settings,
         rightPanelVisible: isNewInstance ? false : state.settings.rightPanelVisible,
-        sidebarVisible: isNewInstance ? false : sidebarVisible
+        sidebarVisible: isNewInstance ? false : (state.settings.sidebarVisible ?? true)
       })
       // Ensure UI components reflect loaded settings immediately
       this.sidebar.applyStyles()
@@ -474,8 +469,16 @@ class App {
       if (view === 'lock') return void securityService.lock()
 
       const isSidebarView = view === 'notes' || view === 'search'
-      this.sidebar.setVisible(isSidebarView)
-      this.sidebar.setMode(view === 'search' ? 'search' : 'explorer')
+      // Only change sidebar visibility when it's a user-driven view switch.
+      // If the sidebar is intentionally hidden (sidebarVisible === false in settings),
+      // a programmatic setActiveView('notes') on startup must not force it open.
+      if (isSidebarView && state.settings?.sidebarVisible === false) {
+        // User has hidden the sidebar — just switch mode without showing it
+        this.sidebar.setMode(view === 'search' ? 'search' : 'explorer')
+      } else {
+        this.sidebar.setVisible(isSidebarView)
+        this.sidebar.setMode(view === 'search' ? 'search' : 'explorer')
+      }
       this.viewOrchestrator.updateViewVisibility()
       this.editor.layout()
     })
@@ -485,7 +488,6 @@ class App {
         state.settings.sidebarVisible = visible
       }
       window.api.updateSettings({ sidebarVisible: visible }).catch(() => {})
-      localStorage.setItem('kb-sidebar', String(visible))
       this.activityBar.render()
     })
 

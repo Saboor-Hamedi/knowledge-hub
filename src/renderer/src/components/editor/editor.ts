@@ -70,6 +70,7 @@ export class EditorComponent {
   private preview?: PreviewComponent
   private previewHost?: HTMLElement
   public isPreviewMode: boolean = false
+  public isSplitMode: boolean = false
   private suggestionManager: SuggestionManager | null = null
 
   constructor(containerId: string) {
@@ -78,6 +79,7 @@ export class EditorComponent {
     this.emptyState = this.container.querySelector('.editor-empty') as HTMLElement
     this.editorHost = this.container.querySelector('.editor-host') as HTMLElement
     this.previewHost = this.container.querySelector('.preview-host') as HTMLElement
+    this.setupSplitDivider()
 
     // Start loading Monaco in background immediately
     void this.ensureEditor()
@@ -259,6 +261,7 @@ export class EditorComponent {
     this.container.innerHTML = `
       <div class="editor-empty" style="display: none;">Select or create a note to start writing</div>
       <div class="editor-host" aria-label="Note editor"></div>
+      <div class="split-divider" id="splitDivider"></div>
       <div class="preview-host" style="display: none;">
         <div id="preview-container"></div>
       </div>
@@ -276,6 +279,43 @@ export class EditorComponent {
         })
       }
     }, 0)
+  }
+
+  private setupSplitDivider(): void {
+    const divider = document.getElementById('splitDivider')
+    if (!divider) return
+
+    let dragging = false
+
+    divider.addEventListener('mousedown', () => {
+      dragging = true
+      divider.classList.add('dragging')
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    })
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging || !this.previewHost) return
+      const rect = this.container.getBoundingClientRect()
+      const pct = ((e.clientX - rect.left) / rect.width) * 100
+      const clamped = Math.max(20, Math.min(80, pct))
+      this.editorHost.style.flex = `0 0 ${clamped}%`
+      this.previewHost.style.flex = `0 0 ${100 - clamped}%`
+    })
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return
+      dragging = false
+      divider.classList.remove('dragging')
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+
+      const w = parseFloat(this.editorHost.style.flex.split(' ')[2] || this.editorHost.style.width)
+      if (!isNaN(w) && state.settings) {
+        state.settings.splitViewRatio = w
+        window.api.updateSettings({ splitViewRatio: w }).catch(() => {})
+      }
+    })
   }
 
   public async loadNote(payload: NotePayload): Promise<void> {
@@ -325,7 +365,9 @@ export class EditorComponent {
 
     this.emptyState.style.display = 'none'
     this.editorHost.style.display = 'block'
-    this.updatePreview()
+    if (this.isSplitMode) {
+      this.updatePreview()
+    }
     this.updateDecorations()
     this.updateHashtagDecorations()
 
@@ -389,15 +431,14 @@ export class EditorComponent {
   public async showPreview(content: string): Promise<void> {
     if (!this.previewHost || !this.editorHost || !this.preview) return
 
-    // Ensure main container is visible (in case it was hidden by welcome page)
     this.container.style.display = 'block'
-
-    // Hide editor, show preview
-    this.editorHost.style.display = 'none'
-    this.previewHost.style.display = 'block'
     this.emptyState.style.display = 'none'
 
-    // Update preview content with file path for language detection
+    // Enter split mode instead of full preview
+    if (!this.isSplitMode) {
+      this.enterSplitMode()
+    }
+
     const filePath = state.activeId
       ? state.notes.find((n) => n.id === state.activeId)?.title || state.activeId
       : null
@@ -666,6 +707,9 @@ export class EditorComponent {
           this.updateHashtagDecorations()
           if (state.applyingRemote) return
           this.markDirty()
+          if (this.isSplitMode) {
+            this.updatePreview()
+          }
         })
 
         const updateCursorState = () => {
@@ -880,11 +924,11 @@ export class EditorComponent {
         }
       )
 
-      // Add Ctrl+\ (or Cmd+\ on Mac) to toggle preview
+      // Add Alt+\ to toggle split view
       this.editor.addCommand(
-        this.monacoInstance.KeyMod.CtrlCmd | this.monacoInstance.KeyCode.Backslash,
+        this.monacoInstance.KeyMod.Alt | this.monacoInstance.KeyCode.Backslash,
         () => {
-          this.togglePreview()
+          this.toggleSplit()
         }
       )
 
@@ -929,26 +973,50 @@ export class EditorComponent {
     }
   }
 
-  togglePreview(): void {
+  toggleSplit(): void {
     if (!this.previewHost || !this.editorHost) return
 
-    // Do not toggle if no note is active
     const isNote = state.notes.some((n) => n.id === state.activeId)
     if (!state.activeId || state.activeId === 'settings' || !isNote) return
 
-    this.isPreviewMode = !this.isPreviewMode
-
-    if (this.isPreviewMode) {
-      // Show preview, hide editor
-      this.editorHost.style.display = 'none'
-      this.previewHost.style.display = 'block'
-      // Update preview with current content
-      this.updatePreview()
+    if (this.isSplitMode) {
+      this.leaveSplitMode()
     } else {
-      // Show editor, hide preview
-      this.editorHost.style.display = 'block'
-      this.previewHost.style.display = 'none'
+      this.enterSplitMode()
     }
+  }
+
+  private enterSplitMode(): void {
+    if (!this.previewHost) return
+    this.isSplitMode = true
+    this.isPreviewMode = false
+    this.editorHost.style.display = 'block'
+    this.previewHost.style.display = 'block'
+    const ratio = state.settings?.splitViewRatio || 50
+    this.editorHost.style.flex = `0 0 ${ratio}%`
+    this.previewHost.style.flex = `0 0 ${100 - ratio}%`
+    this.container.classList.add('split-mode')
+    if (state.settings) {
+      state.settings.splitViewEnabled = true
+      window.api.updateSettings({ splitViewEnabled: true }).catch(() => {})
+    }
+    this.updatePreview()
+    this.editor?.focus()
+  }
+
+  private leaveSplitMode(): void {
+    if (!this.previewHost) return
+    this.isSplitMode = false
+    this.container.classList.remove('split-mode')
+    this.editorHost.style.flex = ''
+    this.previewHost.style.flex = ''
+    this.editorHost.style.display = 'block'
+    this.previewHost.style.display = 'none'
+    if (state.settings) {
+      state.settings.splitViewEnabled = false
+      window.api.updateSettings({ splitViewEnabled: false }).catch(() => {})
+    }
+    this.editor?.focus()
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
@@ -978,15 +1046,14 @@ export class EditorComponent {
       this.manualSave()
     } else if (isMod && key === '\\') {
       event.preventDefault()
-      this.togglePreview()
+      this.toggleSplit()
     } else if (isMod && event.shiftKey && key === ',') {
       // Ctrl+Shift+, to toggle theme modal
       event.preventDefault()
       window.dispatchEvent(new CustomEvent('toggle-theme-modal'))
-    } else if (key === 'escape' && this.isPreviewMode) {
-      // Escape to close preview mode
+    } else if (key === 'escape' && this.isSplitMode) {
       event.preventDefault()
-      this.togglePreview()
+      this.leaveSplitMode()
     }
   }
 

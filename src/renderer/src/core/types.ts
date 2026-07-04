@@ -42,6 +42,8 @@ export type AppSettings = {
   vaultPath?: string
   theme?: string
   editorTheme?: string
+  splitViewRatio?: number
+  splitViewEnabled?: boolean
   sidebarVisible?: boolean
   autoSave?: boolean
   autoSaveDelay?: number

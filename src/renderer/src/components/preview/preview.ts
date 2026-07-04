@@ -9,7 +9,6 @@ import './preview.css'
 import '../wikilink/wikilink.css'
 import { wikiLinkPreviewModal } from '../wikilink/wikilink'
 
-// Pre-register common languages at module load
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
 import json from 'highlight.js/lib/languages/json'
@@ -19,7 +18,6 @@ import python from 'highlight.js/lib/languages/python'
 import bash from 'highlight.js/lib/languages/bash'
 import yaml from 'highlight.js/lib/languages/yaml'
 
-// Register common languages immediately
 hljs.registerLanguage('javascript', javascript)
 hljs.registerLanguage('js', javascript)
 hljs.registerLanguage('typescript', typescript)
@@ -33,27 +31,24 @@ hljs.registerLanguage('py', python)
 hljs.registerLanguage('bash', bash)
 hljs.registerLanguage('sh', bash)
 hljs.registerLanguage('yml', yaml)
+hljs.registerLanguage('yaml', yaml)
 
-// Configure highlighting to ignore unescaped HTML warnings
-// Safe as we sanitize with DOMPurify
 hljs.configure({ ignoreUnescapedHTML: true })
 
-// Helper for tag/mention matching
-const isIdentifierChar = (code: number): boolean => {
-  return (
-    (code >= 0x30 && code <= 0x39) || // 0-9
-    (code >= 0x41 && code <= 0x5a) || // A-Z
-    (code >= 0x61 && code <= 0x7a) || // a-z
-    code === 0x5f || // _
-    code === 0x2d // -
-  )
-}
+const isIdentifierChar = (code: number): boolean =>
+  (code >= 0x30 && code <= 0x39) ||
+  (code >= 0x41 && code <= 0x5a) ||
+  (code >= 0x61 && code <= 0x7a) ||
+  code === 0x5f || code === 0x2d
 
 export class PreviewComponent {
   private container: HTMLElement
   private md: MarkdownIt
   private onWikiLinkClick?: (target: string) => void
   private currentFilePath: string | null = null
+  private lastContent: string | null = null
+  private renderPending = false
+  private boundUpdateFontSize: () => void
 
   constructor(containerId: string) {
     this.container = document.getElementById(containerId) as HTMLElement
@@ -61,40 +56,46 @@ export class PreviewComponent {
       throw new Error(`Preview container with id "${containerId}" not found`)
     }
 
-    // Initialize MarkdownIt with plugins
     this.md = new MarkdownIt({
-      html: true, // Enable HTML tags in source
-      linkify: true, // Autoconvert URL-like text to links
-      breaks: false, // Don't convert '\n' in paragraphs into <br> (standard markdown)
-      typographer: true // Enable some language-neutral replacement + quotes beautification
+      html: true,
+      linkify: true,
+      breaks: false,
+      typographer: true
     })
 
-    // Add custom rule for wiki links [[note-name]]
+    this.registerWikiLinkRule()
+    this.registerTagRule()
+    this.registerMentionRule()
+
+    this.render()
+    this.attachEvents()
+
+    this.boundUpdateFontSize = () => this.updateFontSize()
+    window.addEventListener('knowledge-hub:settings-updated', this.boundUpdateFontSize)
+  }
+
+  private registerWikiLinkRule(): void {
     this.md.inline.ruler.before('link', 'wiki_link', (state, silent) => {
       const max = state.posMax
       const start = state.pos
 
-      if (state.src.charCodeAt(start) !== 0x5b /* [ */) return false
-      if (state.src.charCodeAt(start + 1) !== 0x5b /* [ */) return false
+      if (state.src.charCodeAt(start) !== 0x5b) return false
+      if (state.src.charCodeAt(start + 1) !== 0x5b) return false
 
       let pos = start + 2
       const labelStart = pos
       let labelEnd = -1
 
-      // Find the closing ]]
       while (pos < max) {
-        if (state.src.charCodeAt(pos) === 0x5d /* ] */) {
-          if (state.src.charCodeAt(pos + 1) === 0x5d /* ] */) {
-            labelEnd = pos
-            pos += 2
-            break
-          }
+        if (state.src.charCodeAt(pos) === 0x5d && state.src.charCodeAt(pos + 1) === 0x5d) {
+          labelEnd = pos
+          pos += 2
+          break
         }
         pos++
       }
 
       if (labelEnd < 0) return false
-
       const label = state.src.slice(labelStart, labelEnd)
       if (!label) return false
 
@@ -110,30 +111,23 @@ export class PreviewComponent {
       return true
     })
 
-    // Render wiki links
     this.md.renderer.rules.wiki_link = (tokens, idx) => {
-      const token = tokens[idx]
-      const label = token.content
+      const label = tokens[idx].content
       return `<a href="#" class="wiki-link" data-wiki-link="${this.md.utils.escapeHtml(label)}">${this.md.utils.escapeHtml(label)}</a>`
     }
+  }
 
-    // Add custom rule for tags #tag
+  private registerTagRule(): void {
     this.md.inline.ruler.after('wiki_link', 'tag', (state, silent) => {
       const start = state.pos
-      if (state.src.charCodeAt(start) !== 0x23 /* # */) return false
+      if (state.src.charCodeAt(start) !== 0x23) return false
 
       const max = state.posMax
       let pos = start + 1
 
-      if (pos >= max) return false
+      if (pos >= max || !isIdentifierChar(state.src.charCodeAt(pos))) return false
 
-      if (!isIdentifierChar(state.src.charCodeAt(pos))) return false
-
-      while (pos < max) {
-        if (!isIdentifierChar(state.src.charCodeAt(pos))) break
-        pos++
-      }
-
+      while (pos < max && isIdentifierChar(state.src.charCodeAt(pos))) pos++
       if (pos === start + 1) return false
 
       if (!silent) {
@@ -146,23 +140,22 @@ export class PreviewComponent {
       return true
     })
 
-    // Add custom rule for mentions @mention
+    this.md.renderer.rules.tag = (tokens, idx) => {
+      return `<span class="tag">#${this.md.utils.escapeHtml(tokens[idx].content)}</span>`
+    }
+  }
+
+  private registerMentionRule(): void {
     this.md.inline.ruler.after('tag', 'mention', (state, silent) => {
       const start = state.pos
-      if (state.src.charCodeAt(start) !== 0x40 /* @ */) return false
+      if (state.src.charCodeAt(start) !== 0x40) return false
 
       const max = state.posMax
       let pos = start + 1
 
-      if (pos >= max) return false
+      if (pos >= max || !isIdentifierChar(state.src.charCodeAt(pos))) return false
 
-      if (!isIdentifierChar(state.src.charCodeAt(pos))) return false
-
-      while (pos < max) {
-        if (!isIdentifierChar(state.src.charCodeAt(pos))) break
-        pos++
-      }
-
+      while (pos < max && isIdentifierChar(state.src.charCodeAt(pos))) pos++
       if (pos === start + 1) return false
 
       if (!silent) {
@@ -175,264 +168,21 @@ export class PreviewComponent {
       return true
     })
 
-    this.md.renderer.rules.tag = (tokens, idx) => {
-      const label = tokens[idx].content
-      return `<span class="tag">#${this.md.utils.escapeHtml(label)}</span>`
-    }
-
     this.md.renderer.rules.mention = (tokens, idx) => {
-      const label = tokens[idx].content
-      return `<span class="mention">@${this.md.utils.escapeHtml(label)}</span>`
+      return `<span class="mention">@${this.md.utils.escapeHtml(tokens[idx].content)}</span>`
     }
-
-    this.render()
-    this.attachEvents()
-
-    this.boundUpdateFontSize = () => this.updateFontSize()
-    window.addEventListener('knowledge-hub:settings-updated', this.boundUpdateFontSize)
   }
 
   setWikiLinkHandler(handler: (target: string) => void): void {
     this.onWikiLinkClick = handler
   }
 
-  private resolveImagePath(src: string): string {
-    // If it's already an absolute URL (http/https/file), return as-is
-    if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('file://')) {
-      return src
-    }
-
-    // If it's a relative path and we have vault path, convert to file:// URL
-    const vaultPath = state.vaultPath
-    if (vaultPath && !src.startsWith('/')) {
-      // Normalize path separators and join
-      const vaultPathNormalized = vaultPath.replace(/\\/g, '/')
-      const srcNormalized = src.replace(/\\/g, '/')
-
-      // Remove leading slash from src if present
-      const cleanSrc = srcNormalized.startsWith('/') ? srcNormalized.slice(1) : srcNormalized
-
-      // Join paths
-      const fullPath = `${vaultPathNormalized}/${cleanSrc}`
-
-      // Convert to file:// URL (Windows needs 3 slashes, Unix needs 2)
-      // On Windows, paths like C:\ need to become file:///C:/
-      if (fullPath.match(/^[A-Za-z]:/)) {
-        // Windows absolute path
-        return `file:///${fullPath.replace(/\\/g, '/')}`
-      } else {
-        // Unix path
-        return `file://${fullPath}`
-      }
-    }
-
-    // Fallback: return as-is
-    return src
-  }
-
-  private render(): void {
-    this.container.innerHTML = '<div class="preview-content"></div>'
-    this.updateFontSize()
-  }
-
-  private attachEvents(): void {
-    // Handle wikilink hover preview in preview mode
-    this.container.addEventListener('mouseover', (e) => {
-      const wikiLink = (e.target as HTMLElement).closest('.wiki-link') as HTMLElement
-      if (wikiLink && wikiLink.dataset.wikiLink) {
-        const target = wikiLink.dataset.wikiLink
-        void wikiLinkPreviewModal.show(
-          target,
-          wikiLink.getBoundingClientRect(),
-          async (id) => {
-            try {
-              const note = state.notes.find(
-                (n) =>
-                  n.id.toLowerCase() === id.toLowerCase() ||
-                  (n.title && n.title.toLowerCase() === id.toLowerCase()) ||
-                  (n.path && `${n.path}/${n.id}`.toLowerCase() === id.toLowerCase())
-              )
-              if (!note) return null
-              const res = await window.api.loadNote(note.id, note.path)
-              return res?.content || null
-            } catch {
-              return null
-            }
-          }
-        )
-      }
-    })
-    this.container.addEventListener('mouseout', (e) => {
-      const wikiLink = (e.target as HTMLElement).closest('.wiki-link') as HTMLElement
-      if (wikiLink) {
-        wikiLinkPreviewModal.hide(150)
-      }
-    })
-
-    // Handle click delegation
-    this.container.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement
-
-      // 1. Handle Wiki Links
-      const wikiLink = target.closest('.wiki-link') as HTMLElement
-      if (wikiLink && this.onWikiLinkClick) {
-        e.preventDefault()
-        const linkTarget = wikiLink.dataset.wikiLink
-        if (linkTarget) {
-          this.onWikiLinkClick(linkTarget)
-        }
-        return
-      }
-
-      // 2. Handle Tags
-      const tagElement = target.closest('.tag') as HTMLElement
-      if (tagElement) {
-        e.preventDefault()
-        const tagText = tagElement.textContent?.replace(/^#/, '') || ''
-        if (tagText) {
-          // Open search with tag
-          window.dispatchEvent(
-            new CustomEvent('hub-open-search', {
-              detail: { query: `#${tagText}` }
-            })
-          )
-        }
-        return
-      }
-
-      // 3. Handle Mentions
-      const mentionElement = target.closest('.mention') as HTMLElement
-      if (mentionElement) {
-        e.preventDefault()
-        const mentionText = mentionElement.textContent?.replace(/^@/, '') || ''
-        if (mentionText) {
-          // Open search with mention
-          window.dispatchEvent(
-            new CustomEvent('hub-open-search', {
-              detail: { query: `@${mentionText}` }
-            })
-          )
-          // Also try to find a note with that name directly
-          if (this.onWikiLinkClick) {
-            this.onWikiLinkClick(mentionText)
-          }
-        }
-        return
-      }
-    })
-  }
-
-  private lastContent: string | null = null
-  private renderPending = false
-  private boundUpdateFontSize: () => void
-
-  /**
-   * Detects if a file is a code file (not markdown) based on extension
-   */
-  private isCodeFile(filePath: string): boolean {
-    const lower = filePath.toLowerCase()
-    // Markdown extensions
-    if (lower.endsWith('.md') || lower.endsWith('.markdown')) {
-      return false
-    }
-    // Code file extensions
-    const codeExtensions = [
-      '.js',
-      '.jsx',
-      '.ts',
-      '.tsx',
-      '.json',
-      '.py',
-      '.rb',
-      '.php',
-      '.java',
-      '.c',
-      '.cpp',
-      '.cs',
-      '.go',
-      '.rs',
-      '.html',
-      '.css',
-      '.scss',
-      '.sass',
-      '.less',
-      '.sql',
-      '.sh',
-      '.bash',
-      '.yaml',
-      '.yml',
-      '.xml',
-      '.toml',
-      '.swift',
-      '.kt',
-      '.dart',
-      '.lua',
-      '.r',
-      '.m',
-      '.h'
-    ]
-    return codeExtensions.some((ext) => lower.endsWith(ext))
-  }
-
-  /**
-   * Maps file extension to language identifier for syntax highlighting
-   */
-  private getLanguageFromPath(filePath: string): string {
-    const lower = filePath.toLowerCase()
-    const extMap: Record<string, string> = {
-      '.js': 'javascript',
-      '.jsx': 'javascript',
-      '.ts': 'typescript',
-      '.tsx': 'typescript',
-      '.json': 'json',
-      '.py': 'python',
-      '.rb': 'ruby',
-      '.php': 'php',
-      '.java': 'java',
-      '.c': 'c',
-      '.cpp': 'cpp',
-      '.cs': 'csharp',
-      '.go': 'go',
-      '.rs': 'rust',
-      '.html': 'html',
-      '.css': 'css',
-      '.scss': 'scss',
-      '.sass': 'sass',
-      '.less': 'less',
-      '.sql': 'sql',
-      '.sh': 'bash',
-      '.bash': 'bash',
-      '.yaml': 'yaml',
-      '.yml': 'yaml',
-      '.xml': 'xml',
-      '.toml': 'toml',
-      '.swift': 'swift',
-      '.kt': 'kotlin',
-      '.dart': 'dart',
-      '.lua': 'lua',
-      '.r': 'r',
-      '.m': 'objective-c',
-      '.h': 'c'
-    }
-
-    for (const [ext, lang] of Object.entries(extMap)) {
-      if (lower.endsWith(ext)) {
-        return lang
-      }
-    }
-    return 'plaintext'
-  }
-
   update(content: string, filePath?: string): void {
-    // Update file path if provided
     if (filePath !== undefined) {
       this.currentFilePath = filePath
     }
-
-    if (this.lastContent === content) return
+    if (this.lastContent === content || this.renderPending) return
     this.lastContent = content
-
-    if (this.renderPending) return
     this.renderPending = true
 
     requestAnimationFrame(() => {
@@ -443,10 +193,27 @@ export class PreviewComponent {
     })
   }
 
+  clear(): void {
+    const el = this.container.querySelector('.preview-content') as HTMLElement
+    if (el) el.innerHTML = ''
+    this.lastContent = null
+  }
+
+  destroy(): void {
+    window.removeEventListener('knowledge-hub:settings-updated', this.boundUpdateFontSize)
+    this.clear()
+    this.container.innerHTML = ''
+  }
+
+  private render(): void {
+    this.container.innerHTML = '<div class="preview-content"></div>'
+    this.updateFontSize()
+  }
+
   private updateFontSize(): void {
-    const previewContent = this.container.querySelector('.preview-content') as HTMLElement
-    if (previewContent) {
-      previewContent.style.fontSize = `${state.settings?.fontSize ?? 14}px`
+    const el = this.container.querySelector('.preview-content') as HTMLElement
+    if (el) {
+      el.style.fontSize = `${state.settings?.fontSize ?? 14}px`
     }
   }
 
@@ -459,168 +226,199 @@ export class PreviewComponent {
     if (!previewContent) return
 
     this.updateFontSize()
-
-    // Save scroll position
     const scrollTop = this.container.scrollTop
-
-    // Strip YAML/TOML frontmatter
     content = this.stripFrontmatter(content)
 
-    // Determine if we need to wrap content in code fence
-    let renderContent = content
     const isCode = this.currentFilePath && this.isCodeFile(this.currentFilePath)
+    const renderContent = isCode
+      ? `\`\`\`${this.getLanguageFromPath(this.currentFilePath!)}\n${content}\n\`\`\``
+      : content
 
-    if (isCode) {
-      previewContent.classList.add('is-full-file')
-      const language = this.getLanguageFromPath(this.currentFilePath!)
-      // Wrap entire content in code fence for syntax highlighting
-      renderContent = `\`\`\`${language}\n${content}\n\`\`\``
-    } else {
-      previewContent.classList.remove('is-full-file')
-    }
+    previewContent.classList.toggle('is-full-file', !!isCode)
+    previewContent.innerHTML = DOMPurify.sanitize(
+      this.md.render(renderContent.replace(/!\[\s+([^\]]+)\]/g, '![$1]')),
+      { ADD_ATTR: ['class', 'data-wiki-link', 'src', 'alt', 'title'], ADD_TAGS: ['pre', 'code', 'img'], ALLOW_DATA_ATTR: true, KEEP_CONTENT: true, ALLOW_UNKNOWN_PROTOCOLS: false }
+    )
 
-    // Normalize image markdown syntax (fix spaces after !)
-    // Fix cases like ![ Logo.png] to ![Logo.png]
-    const normalizedContent = renderContent.replace(/!\[\s+([^\]]+)\]/g, '![$1]')
-
-    // Render markdown to HTML
-    const rawHtml = this.md.render(normalizedContent)
-
-    // Sanitize HTML but allow necessary attributes for styling and functionality
-    const cleanHtml = DOMPurify.sanitize(rawHtml, {
-      ADD_ATTR: ['class', 'data-wiki-link', 'src', 'alt', 'title'],
-      ADD_TAGS: ['pre', 'code', 'img'],
-      ALLOW_DATA_ATTR: true,
-      KEEP_CONTENT: true,
-      ALLOW_UNKNOWN_PROTOCOLS: false
-    })
-
-    previewContent.innerHTML = cleanHtml
-
-    // Restore scroll position
     this.container.scrollTop = scrollTop
+    this.resolveImages(previewContent)
+    renderMermaid(previewContent)
+    this.wrapCodeBlocks(previewContent)
+    this.rehighlightCode(previewContent)
+  }
 
-    // Resolve image paths to file:// URLs
-    previewContent.querySelectorAll('img').forEach((img) => {
-      const imgElement = img as HTMLImageElement
-      const src = imgElement.getAttribute('src')
-      if (
-        src &&
-        !src.startsWith('http://') &&
-        !src.startsWith('https://') &&
-        !src.startsWith('file://')
-      ) {
-        const resolvedPath = this.resolveImagePath(src)
-        imgElement.src = resolvedPath
-        // Handle image load errors
-        imgElement.onerror = () => {
-          console.warn('[Preview] Failed to load image:', resolvedPath, 'Original src:', src)
-          imgElement.alt = `Failed to load: ${src}`
-          imgElement.style.border = '2px dashed var(--danger)'
+  private resolveImages(container: HTMLElement): void {
+    container.querySelectorAll('img').forEach((img) => {
+      const el = img as HTMLImageElement
+      const src = el.getAttribute('src')
+      if (!src || src.startsWith('http://') || src.startsWith('https://') || src.startsWith('file://')) return
+
+      const vaultPath = state.vaultPath
+      if (vaultPath && !src.startsWith('/')) {
+        const full = `${vaultPath.replace(/\\/g, '/')}/${src.replace(/\\/g, '/').replace(/^\//, '')}`
+        const resolved = full.match(/^[A-Za-z]:/) ? `file:///${full.replace(/\\/g, '/')}` : `file://${full}`
+        el.src = resolved
+        el.onerror = () => {
+          el.alt = `Failed to load: ${src}`
+          el.style.border = '2px dashed var(--danger)'
         }
       }
     })
+  }
 
-    // Render mermaid diagrams before code wrapping
-    renderMermaid(previewContent)
+  private wrapCodeBlocks(container: HTMLElement): void {
+    container.querySelectorAll('pre').forEach((pre) => {
+      const el = pre as HTMLElement
+      if (el.parentElement?.classList.contains('code-block-wrapper')) return
 
-    // Wrap code blocks with header and add copy buttons
-    previewContent.querySelectorAll('pre').forEach((pre) => {
-      const preElement = pre as HTMLElement
+      const code = el.querySelector('code')
+      const lang = code?.className?.replace('language-', '') || ''
+      if (lang === 'mermaid') return
 
-      // Check if already wrapped
-      if (preElement.parentElement?.classList.contains('code-block-wrapper')) return
-
-      // Get language from code element
-      const codeElement = preElement.querySelector('code')
-      const language = codeElement?.className?.replace('language-', '') || ''
-      if (language === 'mermaid') return // already handled by renderMermaid
-      const languageName = language || 'code'
-
-      // Create wrapper
       const wrapper = document.createElement('div')
       wrapper.className = 'code-block-wrapper'
 
-      // Create header
       const header = document.createElement('div')
       header.className = 'code-block-header'
 
-      // Language label
-      const languageLabel = document.createElement('span')
-      languageLabel.className = 'code-block-language'
-      languageLabel.textContent = languageName
-      header.appendChild(languageLabel)
+      const label = document.createElement('span')
+      label.className = 'code-block-language'
+      label.textContent = lang || 'code'
+      header.appendChild(label)
 
       const actions = document.createElement('div')
-      actions.style.display = 'flex'
-      actions.style.gap = '4px'
+      actions.style.cssText = 'display:flex;gap:4px'
 
-      const copyBtn = document.createElement('button')
-      copyBtn.className = 'code-copy-button'
-      copyBtn.title = 'Copy code'
-      copyBtn.dataset.restoreIcon = copyIcon
-      copyBtn.dataset.restoreTitle = 'Copy code'
-      copyBtn.innerHTML = copyIcon
-      copyBtn.addEventListener('click', async () => {
-        const code = preElement.querySelector('code')
-        if (code) {
-          try {
-            await navigator.clipboard.writeText(code.textContent || '')
-            flashButton(copyBtn, checkIcon(), 'Copied!')
-          } catch { /* ignore */ }
-        }
-      })
-
-      const imgBtn = document.createElement('button')
-      imgBtn.className = 'code-copy-button'
-      imgBtn.title = 'Copy as image'
-      imgBtn.dataset.restoreIcon = imageIcon
-      imgBtn.dataset.restoreTitle = 'Copy as image'
-      imgBtn.innerHTML = imageIcon
-      imgBtn.addEventListener('click', async () => {
-        try {
-          await copyHtmlAsImage(preElement)
-          flashButton(imgBtn, checkIcon(), 'Copied image!')
-        } catch {
-          flashButton(imgBtn, failIcon, 'Failed')
-        }
-      })
-
-      actions.appendChild(copyBtn)
-      actions.appendChild(imgBtn)
+      const copyBtn = this.makeCopyButton(code)
+      const imgBtn = this.makeImageButton(el)
+      actions.append(copyBtn, imgBtn)
       header.appendChild(actions)
 
-      // Wrap the pre element
-      preElement.parentNode?.insertBefore(wrapper, preElement)
-      wrapper.appendChild(header)
-      wrapper.appendChild(preElement)
+      el.parentNode?.insertBefore(wrapper, el)
+      wrapper.append(header, el)
     })
+  }
 
-    // Re-highlight code blocks (DOMPurify might have stripped some attributes)
-    previewContent.querySelectorAll('pre code').forEach((block) => {
-      const codeElement = block as HTMLElement
-      const lang = codeElement.className.match(/language-(\w+)/)?.[1] || ''
+  private makeCopyButton(codeEl: HTMLElement | null): HTMLButtonElement {
+    const btn = document.createElement('button')
+    btn.className = 'code-copy-button'
+    btn.title = 'Copy code'
+    btn.dataset.restoreIcon = copyIcon
+    btn.dataset.restoreTitle = 'Copy code'
+    btn.innerHTML = copyIcon
+    btn.addEventListener('click', async () => {
+      if (!codeEl) return
+      try {
+        await navigator.clipboard.writeText(codeEl.textContent || '')
+        flashButton(btn, checkIcon(), 'Copied!')
+      } catch { /* ignore */ }
+    })
+    return btn
+  }
+
+  private makeImageButton(preEl: HTMLElement): HTMLButtonElement {
+    const btn = document.createElement('button')
+    btn.className = 'code-copy-button'
+    btn.title = 'Copy as image'
+    btn.dataset.restoreIcon = imageIcon
+    btn.dataset.restoreTitle = 'Copy as image'
+    btn.innerHTML = imageIcon
+    btn.addEventListener('click', async () => {
+      try {
+        await copyHtmlAsImage(preEl)
+        flashButton(btn, checkIcon(), 'Copied image!')
+      } catch {
+        flashButton(btn, failIcon, 'Failed')
+      }
+    })
+    return btn
+  }
+
+  private rehighlightCode(container: HTMLElement): void {
+    container.querySelectorAll('pre code').forEach((block) => {
+      const el = block as HTMLElement
+      const lang = el.className.match(/language-(\w+)/)?.[1]
       if (lang && hljs.getLanguage(lang)) {
-        try {
-          hljs.highlightElement(codeElement as HTMLElement)
-        } catch {
-          // Ignore highlighting errors
-        }
+        try { hljs.highlightElement(el) } catch { /* ignore */ }
       }
     })
   }
 
-  clear(): void {
-    const previewContent = this.container.querySelector('.preview-content') as HTMLElement
-    if (previewContent) {
-      previewContent.innerHTML = ''
-    }
-    this.lastContent = null
+  private isCodeFile(filePath: string): boolean {
+    const lower = filePath.toLowerCase()
+    if (lower.endsWith('.md') || lower.endsWith('.markdown')) return false
+
+    return ['.js','.jsx','.ts','.tsx','.json','.py','.rb','.php','.java','.c','.cpp','.cs',
+      '.go','.rs','.html','.css','.scss','.sass','.less','.sql','.sh','.bash','.yaml','.yml',
+      '.xml','.toml','.swift','.kt','.dart','.lua','.r','.m','.h'
+    ].some((ext) => lower.endsWith(ext))
   }
 
-  destroy(): void {
-    window.removeEventListener('knowledge-hub:settings-updated', this.boundUpdateFontSize)
-    this.clear()
-    this.container.innerHTML = ''
+  private getLanguageFromPath(filePath: string): string {
+    const map: Record<string, string> = {
+      '.js':'javascript','.jsx':'javascript','.ts':'typescript','.tsx':'typescript',
+      '.json':'json','.py':'python','.rb':'ruby','.php':'php','.java':'java',
+      '.c':'c','.cpp':'cpp','.cs':'csharp','.go':'go','.rs':'rust',
+      '.html':'html','.css':'css','.scss':'scss','.sass':'sass','.less':'less',
+      '.sql':'sql','.sh':'bash','.bash':'bash','.yaml':'yaml','.yml':'yaml',
+      '.xml':'xml','.toml':'toml','.swift':'swift','.kt':'kotlin','.dart':'dart',
+      '.lua':'lua','.r':'r','.m':'objective-c','.h':'c'
+    }
+    const ext = Object.keys(map).find((e) => filePath.toLowerCase().endsWith(e))
+    return ext ? map[ext] : 'plaintext'
+  }
+
+  private attachEvents(): void {
+    this.container.addEventListener('mouseover', (e) => {
+      const link = (e.target as HTMLElement).closest('.wiki-link') as HTMLElement
+      if (link?.dataset.wikiLink) {
+        const target = link.dataset.wikiLink
+        void wikiLinkPreviewModal.show(target, link.getBoundingClientRect(), async (id) => {
+          try {
+            const note = state.notes.find(
+              (n) => n.id.toLowerCase() === id.toLowerCase() ||
+                (n.title && n.title.toLowerCase() === id.toLowerCase()) ||
+                (n.path && `${n.path}/${n.id}`.toLowerCase() === id.toLowerCase())
+            )
+            if (!note) return null
+            const res = await window.api.loadNote(note.id, note.path)
+            return res?.content || null
+          } catch { return null }
+        })
+      }
+    })
+
+    this.container.addEventListener('mouseout', (e) => {
+      const link = (e.target as HTMLElement).closest('.wiki-link') as HTMLElement
+      if (link) wikiLinkPreviewModal.hide(150)
+    })
+
+    this.container.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement
+
+      const wikiLink = target.closest('.wiki-link') as HTMLElement
+      if (wikiLink && this.onWikiLinkClick) {
+        e.preventDefault()
+        this.onWikiLinkClick(wikiLink.dataset.wikiLink || '')
+        return
+      }
+
+      const tag = target.closest('.tag') as HTMLElement
+      if (tag) {
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent('hub-open-search', {
+          detail: { query: `#${(tag.textContent || '').replace(/^#/, '')}` }
+        }))
+        return
+      }
+
+      const mention = target.closest('.mention') as HTMLElement
+      if (mention) {
+        e.preventDefault()
+        const text = (mention.textContent || '').replace(/^@/, '')
+        window.dispatchEvent(new CustomEvent('hub-open-search', { detail: { query: `@${text}` } }))
+        this.onWikiLinkClick?.(text)
+      }
+    })
   }
 }

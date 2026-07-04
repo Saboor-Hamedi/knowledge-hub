@@ -133,6 +133,9 @@ export class ViewOrchestrator {
       shell.classList.add('sidebar-hidden')
     }
 
+    if (state.settings) {
+      state.settings.sidebarVisible = visible
+    }
     void window.api.updateSettings({ sidebarVisible: visible })
   }
 

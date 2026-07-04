@@ -1,7 +1,7 @@
 .context-menu {
   position: fixed;
-  background: var(--panel-strong, #1e2430);
-  border: 1px solid var(--border, #2d3548);
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.4),
@@ -10,9 +10,6 @@
   padding: 6px;
   min-width: 180px;
   max-width: 320px;
-  max-height: 400px;
-  /* Robust scrolling for long lists */
-  overflow-y: auto;
   overflow-x: hidden;
   z-index: 2147483647 !important;
   font-size: 13px;
@@ -53,15 +50,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 12px;
+  padding: 6px 10px;
   border-radius: 5px;
   cursor: pointer;
   transition:
     background 80ms ease,
     color 80ms ease;
-  color: var(--text-strong, #e4e8f1);
+  color: var(--text-strong);
   position: relative;
-  overflow: hidden;
 }
 
 /* Premium Item Indicator */
@@ -85,40 +81,14 @@
 }
 
 .context-menu__item:hover:not(.is-disabled) {
-  background: var(--selection, rgba(255, 255, 255, 0.05));
+  background: var(--hover);
   color: var(--text-strong);
-}
-
-.context-menu__item:hover:not(.is-disabled) .context-menu__keybinding {
-  color: rgba(11, 18, 32, 0.7);
-}
-
-.context-menu__item:hover:not(.is-disabled) .context-menu__icon {
-  color: #0b1220;
-}
-
-.context-menu__item:hover:not(.is-disabled) .context-menu__arrow {
-  color: #0b1220;
 }
 
 /* Keyboard focus styling - only applies when not hovering */
 .context-menu:not(:hover) .context-menu__item.is-focused:not(.is-disabled) {
-  background: var(--primary, #7fa7ff);
-  color: #0b1220;
-}
-
-.context-menu:not(:hover)
-  .context-menu__item.is-focused:not(.is-disabled)
-  .context-menu__keybinding {
-  color: rgba(11, 18, 32, 0.7);
-}
-
-.context-menu:not(:hover) .context-menu__item.is-focused:not(.is-disabled) .context-menu__icon {
-  color: #0b1220;
-}
-
-.context-menu:not(:hover) .context-menu__item.is-focused:not(.is-disabled) .context-menu__arrow {
-  color: #0b1220;
+  background: var(--selection);
+  color: var(--text-strong);
 }
 
 .context-menu__item.is-disabled {
@@ -127,18 +97,18 @@
 }
 
 .context-menu__item.is-danger {
-  color: var(--error, #f87171);
+  color: var(--danger);
 }
 
 .context-menu__item.is-danger:hover:not(.is-disabled),
 .context-menu__item.is-danger.is-focused:not(.is-disabled) {
-  background: var(--error, #f87171);
-  color: #fff;
+  background: var(--danger);
+  color: var(--text-strong);
 }
 
 .context-menu__item.is-danger:hover:not(.is-disabled) .context-menu__icon,
 .context-menu__item.is-danger.is-focused:not(.is-disabled) .context-menu__icon {
-  color: #fff;
+  color: var(--text-strong);
 }
 
 .context-menu__item.has-submenu::after {
@@ -152,16 +122,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--text-soft, #8b95a8);
-  transition: color 80ms ease;
+  color: var(--text-soft);
 }
 
 .context-menu__item.is-checked .context-menu__icon {
-  color: var(--primary, #7fa7ff);
-}
-
-.context-menu__item:hover:not(.is-disabled) .context-menu__icon {
-  color: #0b1220;
+  color: var(--primary);
 }
 
 .context-menu__icon svg {
@@ -183,12 +148,9 @@
 
 .context-menu__keybinding {
   font-size: 11px;
-  color: var(--text-soft, #8b95a8);
-  font-family: inherit;
+  color: var(--text-muted);
   margin-left: auto;
   padding-left: 16px;
-  opacity: 0.8;
-  transition: color 80ms ease;
 }
 
 .context-menu__arrow {
@@ -197,9 +159,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-soft, #8b95a8);
+  color: var(--text-muted);
   margin-left: 4px;
-  transition: color 80ms ease;
 }
 
 .context-menu__arrow svg {
@@ -209,13 +170,13 @@
 
 .context-menu__separator {
   height: 1px;
-  background: var(--border, #2d3548);
-  margin: 6px 8px;
+  background: var(--border);
+  margin: 4px 8px;
 }
 
 /* Scrollbar for long menus */
 .context-menu::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .context-menu::-webkit-scrollbar-track {
@@ -223,11 +184,10 @@
 }
 
 .context-menu::-webkit-scrollbar-thumb {
-  background: var(--text-soft, #8b95a8);
-  border-radius: 3px;
-  opacity: 0.5;
+  background: var(--border);
+  border-radius: 2px;
 }
 
 .context-menu::-webkit-scrollbar-thumb:hover {
-  background: var(--text-strong, #e4e8f1);
+  background: var(--text-muted);
 }

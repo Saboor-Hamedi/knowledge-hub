@@ -43,6 +43,7 @@ export class VaultHandler {
         showEmpty: () => void
         layout: () => void
         isPreviewMode: boolean
+        toggleSplit?: () => void
         highlightTerm?: (q: string, mc?: boolean, ww?: boolean, ur?: boolean) => void
         focus?: () => void
       }
@@ -74,6 +75,10 @@ export class VaultHandler {
       await this.openNote(state.openTabs[0].id, state.openTabs[0].path)
     } else {
       this.callbacks.showWelcomePage()
+    }
+
+    if (state.settings?.splitViewEnabled && this.components.editor.toggleSplit) {
+      setTimeout(() => this.components.editor.toggleSplit?.(), 100)
     }
 
     this.callbacks.updateViewVisibility()
@@ -371,7 +376,10 @@ export class VaultHandler {
         openTabs: tabsToSave,
         activeId: state.activeId,
         pinnedTabs: Array.from(state.pinnedTabs),
-        cursorPositions: Object.fromEntries(state.cursorPositions)
+        cursorPositions: Object.fromEntries(state.cursorPositions),
+        sidebarVisible: state.settings?.sidebarVisible,
+        splitViewRatio: state.settings?.splitViewRatio,
+        splitViewEnabled: state.settings?.splitViewEnabled
       } as Partial<AppSettings>)
     } catch (e) {
       console.error('Failed to persist workspace', e)

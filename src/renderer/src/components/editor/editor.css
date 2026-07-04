@@ -67,7 +67,7 @@
 
 .editor-host {
   position: relative;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   opacity: 1;
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -95,17 +95,77 @@
 
 .preview-host {
   position: relative;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   height: 100%;
-  /* Force height to match parent flex */
   overflow-y: auto !important;
   background: var(--panel);
   display: none;
+  border-left: 1px solid var(--border);
 }
 
 .preview-host.active {
   display: block;
+}
+
+.editor-container.split-mode {
+  flex-direction: row;
+}
+
+.editor-container.split-mode .editor-host {
+  flex: 0 0 50%;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.editor-container.split-mode .preview-host {
+  display: block !important;
+  flex: 0 0 50%;
+  min-width: 200px;
+}
+
+.editor-container.split-mode .split-divider {
+  display: block;
+}
+
+.split-divider {
+  display: none;
+  width: 5px;
+  cursor: col-resize;
+  background: var(--border);
+  flex-shrink: 0;
+  position: relative;
+  transition: background 0.15s ease;
+}
+
+.split-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 32px;
+  border-radius: 2px;
+  background: var(--text-muted);
+  opacity: 0.4;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.split-divider:hover::after,
+.split-divider.dragging::after {
+  opacity: 0.8;
+  background: var(--text-soft);
+}
+
+.split-divider:hover,
+.split-divider.dragging {
+  background: var(--primary);
+}
+
+.split-divider.dragging::after {
+  background: var(--primary);
+  opacity: 1;
 }
 
 /* Ensure all monaco widgets are on top */

@@ -17,7 +17,8 @@
   position: absolute;
   left: -2px;
   top: 0;
-  width: 6px; /* Larger hit area */
+  width: 6px;
+  /* Larger hit area */
   height: 100%;
   cursor: ew-resize;
   z-index: 100;
@@ -53,7 +54,8 @@
   justify-content: space-between;
   gap: 8px;
   height: var(--tab-height);
-  padding: 0 12px 0 44px; /* Increased left padding for absolute button */
+  padding: 0 12px 0 44px;
+  /* Increased left padding for absolute button */
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   min-width: 0;
@@ -102,7 +104,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  position: relative; /* For dropdown positioning */
+  position: relative;
+  /* For dropdown positioning */
 }
 
 .rightbar__header-sessions {
@@ -161,7 +164,8 @@
   flex-direction: column;
   gap: 16px;
   -webkit-overflow-scrolling: touch;
-  align-items: stretch; /* Stretch children, they control their own max-width */
+  align-items: stretch;
+  /* Stretch children, they control their own max-width */
 }
 
 /* Fix global indicator wrapper */
@@ -170,7 +174,8 @@
   width: 100%;
   flex-shrink: 0;
   margin-top: auto;
-  min-height: auto; /* Remove forced height */
+  min-height: auto;
+  /* Remove forced height */
 }
 
 /* ---- Welcome ---- */
@@ -222,12 +227,14 @@
 }
 
 @keyframes rightbar-typing {
+
   0%,
   60%,
   100% {
     opacity: 0.35;
     transform: scale(0.9);
   }
+
   30% {
     opacity: 1;
     transform: scale(1);
@@ -252,7 +259,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   margin-left: auto;
   max-width: 85% !important;
-  width: fit-content !important; /* Make it a bubble */
+  width: fit-content !important;
+  /* Make it a bubble */
   justify-items: end;
 }
 
@@ -297,7 +305,8 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   overflow-x: auto;
-  max-width: 100%; /* Ensure it doesn't push parent */
+  max-width: 100%;
+  /* Ensure it doesn't push parent */
 }
 
 .rightbar__message-action-tip {
@@ -321,6 +330,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -333,7 +343,8 @@
 
 .rightbar__message--user .rightbar__message-content {
   background: var(--primary);
-  color: var(--bg); /* Theme-aware contrast fix */
+  color: var(--bg);
+  /* Theme-aware contrast fix */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -489,18 +500,23 @@
 .rightbar__message-content h1 {
   font-size: 16px;
 }
+
 .rightbar__message-content h2 {
   font-size: 14px;
 }
+
 .rightbar__message-content h3 {
   font-size: 13px;
 }
+
 .rightbar__message-content h4 {
   font-size: 12px;
 }
+
 .rightbar__message-content h5 {
   font-size: 11px;
 }
+
 .rightbar__message-content h6 {
   font-size: 10px;
 }
@@ -582,6 +598,7 @@
 .rightbar__message-content p:first-child {
   margin-top: 0;
 }
+
 .rightbar__message-content p:last-child {
   margin-bottom: 0;
 }
@@ -691,12 +708,91 @@
   color: inherit;
 }
 
+/* NEW CODE BLOCK UI */
+.rightbar__code-block {
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #0d1117;
+  /* GitHub Dark style or match hljs */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.rightbar__code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  user-select: none;
+}
+
+.rightbar__code-lang {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.rightbar__code-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rightbar__code-action {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.rightbar__code-action:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-strong);
+}
+
+.rightbar__code-apply {
+  color: var(--primary);
+}
+
+.rightbar__code-apply:hover {
+  background: var(--primary);
+  color: var(--bg);
+}
+
+.rightbar__code-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rightbar__code-block pre {
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 12px !important;
+}
+
 .rightbar__message-content pre code.hljs {
   background: transparent;
 }
 
-/* Code block copy button */
-.rightbar__code-copy {
+/* Code block copy button - HIDDEN (using header actions now) */
+.rightbar__code-copy.old-style {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -738,10 +834,34 @@
   background: var(--panel-strong) !important;
 }
 
-.rightbar__code-copy svg {
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
+.rightbar__action-details .rightbar__code-block {
+  margin: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.rightbar__action-details .rightbar__code-header {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 4px 8px;
+}
+
+.rightbar__action-details .rightbar__code-lang {
+  font-size: 9px;
+}
+
+.rightbar__action-details .rightbar__code-action {
+  width: 20px;
+  height: 20px;
+}
+
+.rightbar__action-details .rightbar__code-action svg {
+  width: 12px;
+  height: 12px;
+}
+
+.rightbar__action-details .rightbar__code-block pre {
+  padding: 8px !important;
+  font-size: 11px !important;
 }
 
 .rightbar__message-content img {
@@ -1066,7 +1186,8 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   max-height: 240px;
   overflow-y: auto;
-  z-index: 9999; /* Increased z-index */
+  z-index: 9999;
+  /* Increased z-index */
   padding: 4px;
 }
 
@@ -1185,7 +1306,7 @@
   transition: transform 0.15s;
 }
 
-.rightbar__mode-dropdown.is-open + .rightbar__mode-button .rightbar__mode-chevron,
+.rightbar__mode-dropdown.is-open+.rightbar__mode-button .rightbar__mode-chevron,
 .rightbar__mode-selector:has(.rightbar__mode-dropdown.is-open) .rightbar__mode-chevron {
   transform: rotate(180deg);
 }
@@ -1217,9 +1338,11 @@
 .rightbar__mode-option {
   display: flex;
   align-items: center;
-  gap: 8px; /* Matched to autocomplete */
+  gap: 8px;
+  /* Matched to autocomplete */
   width: 100%;
-  padding: 6px 10px; /* Matched to autocomplete */
+  padding: 6px 10px;
+  /* Matched to autocomplete */
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
@@ -1290,7 +1413,8 @@
     transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     visibility 0s linear 0.2s;
   z-index: 20;
-  border-right: 1px solid var(--border); /* Subtle border instead of heavy shadow */
+  border-right: 1px solid var(--border);
+  /* Subtle border instead of heavy shadow */
   visibility: hidden;
 }
 
@@ -1299,15 +1423,18 @@
   visibility: visible;
   transition:
     transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    visibility 0s linear 0s; /* Show immediately on open */
+    visibility 0s linear 0s;
+  /* Show immediately on open */
 }
 
 /* Session sidebar resize handle (more subtle & robust) */
 .rightbar__session-sidebar-resize {
   position: absolute;
-  right: -3px; /* Overlap the border */
+  right: -3px;
+  /* Overlap the border */
   top: 0;
-  width: 6px; /* Larger hit area */
+  width: 6px;
+  /* Larger hit area */
   height: 100%;
   cursor: ew-resize;
   z-index: 30;
@@ -1703,39 +1830,49 @@
   .rightbar__header {
     padding: 8px 10px;
   }
+
   .rightbar__title {
     font-size: 12px;
   }
+
   .rightbar__chat-messages {
     padding: 10px 8px;
     gap: 8px;
   }
+
   .rightbar__message-content {
     font-size: 12px;
     padding: 8px 10px;
   }
+
   .rightbar__chat-input-container {
     margin: 8px;
     width: calc(100% - 16px);
   }
+
   .rightbar__chat-input {
     font-size: 12px;
     min-height: 36px;
     padding: 8px 40px 8px 8px;
   }
+
   .rightbar__welcome {
     padding: 16px 12px;
   }
+
   .rightbar__welcome-title {
     font-size: 14px;
   }
+
   .rightbar__welcome-text {
     font-size: 11px;
   }
+
   .rightbar__session-sidebar {
     width: 240px;
   }
 }
+
 /* ---- AI Host (Tabbed View) ---- */
 .ai-host {
   flex: 1;
@@ -1744,7 +1881,8 @@
   overflow: hidden;
   background: var(--bg);
   position: relative;
-  height: 100%; /* Ensure it fills parent */
+  height: 100%;
+  /* Ensure it fills parent */
   width: 100%;
 }
 
@@ -1813,7 +1951,8 @@
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
-  margin-right: auto; /* Push actions to the right */
+  margin-right: auto;
+  /* Push actions to the right */
 }
 
 .rightbar__title-open-tab svg {
@@ -1829,6 +1968,7 @@
 .ai-host .rightbar__title-open-tab {
   display: none;
 }
+
 /* ---- System / Agentic Messages ---- */
 .rightbar__system-message {
   flex: 1;
@@ -1846,11 +1986,13 @@
 
 .rightbar__system-details {
   border: 1px solid var(--border);
-  border-radius: 8px; /* Matched to assistant message bubbles */
+  border-radius: 8px;
+  /* Matched to assistant message bubbles */
   background: var(--panel-strong);
   overflow: hidden;
   transition: all 0.2s ease;
-  width: 100%; /* Take full available width of system-message */
+  width: 100%;
+  /* Take full available width of system-message */
 }
 
 .rightbar__system-details[open] {
@@ -1880,7 +2022,8 @@
 .rightbar__system-summary {
   padding: 8px 12px;
   cursor: pointer;
-  display: list-item; /* Required for details on some browsers */
+  display: list-item;
+  /* Required for details on some browsers */
   list-style: none;
 }
 
@@ -1993,11 +2136,13 @@
 }
 
 @keyframes rightbar-pulse {
+
   0%,
   100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.6;
     transform: scale(0.9);
@@ -2106,6 +2251,7 @@
   border-bottom-style: solid;
   color: var(--primary-strong);
 }
+
 /* ---- Antigravity: File Header ---- */
 .rightbar__file-header {
   display: flex;
@@ -2130,7 +2276,8 @@
 
 /* ---- Antigravity: Inline Agent Control ---- */
 .rightbar__chat-input-wrapper {
-  position: relative; /* Context for absolute panel */
+  position: relative;
+  /* Context for absolute panel */
 }
 
 #agent-control-host {

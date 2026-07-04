@@ -71,9 +71,9 @@ export class ChatRenderer {
       const isStreaming = idx === state.streamingMessageIndex && state.isLoading
       const feedback = msg.feedback || state.messageFeedback.get(idx) || null
 
-      // Cache key includes content length and feedback to detect changes
+      // Cache key includes content length, feedback, and index to ensure actions (with index) update correctly
       // Added version suffix to force re-render when layout logic changes
-      const cacheKey = `${msg.messageId}_${msg.content.length}_${feedback}_${isStreaming}_v11`
+      const cacheKey = `${msg.messageId || idx}_${msg.content.length}_${feedback}_${isStreaming}_${idx}_v12`
 
       const messageId = msg.messageId || ''
       let element = this.messageElements.get(messageId)
@@ -274,9 +274,17 @@ export class ChatRenderer {
           <div class="rightbar__action-details">
             ${
               contentLines && !isStatusOk
-                ? `<div class="rightbar__action-content">
-                     <pre><code>${this.escapeHtml(contentLines)}</code></pre>
-                   </div>`
+                ? `
+                <div class="rightbar__code-block">
+                  <div class="rightbar__code-header">
+                    <span class="rightbar__code-lang">${action}</span>
+                    <div class="rightbar__code-actions">
+                      <button class="rightbar__code-action rightbar__code-apply" data-action="apply-code" title="Apply to Editor">${this.createLucideIcon(Check, 12)}</button>
+                      <button class="rightbar__code-action rightbar__code-copy" data-action="copy-code" title="Copy code">${this.createLucideIcon(Copy, 12)}</button>
+                    </div>
+                  </div>
+                  <pre><code data-code="${this.escapeHtml(contentLines)}">${this.escapeHtml(contentLines)}</code></pre>
+                </div>`
                 : `<div class="rightbar__action-status">
                      <span class="rightbar__action-success-icon">${this.createLucideIcon(Check, 10, 2)}</span>
                      Success
@@ -312,6 +320,13 @@ export class ChatRenderer {
             ${this.createLucideIcon(ThumbsDown, 12)}
           </button>
           ${isError && lastFailedMessage ? `<button type="button" class="rightbar__message-action rightbar__message-action--retry" data-action="retry" title="Retry">${this.createLucideIcon(AlertCircle, 12)} Retry</button>` : ''}
+        </div>`
+    } else if (msg.role === 'system') {
+      return `
+        <div class="rightbar__message-actions">
+          <button type="button" class="rightbar__message-action rightbar__message-action--copy" data-action="copy" data-message-index="${idx}" title="Copy result">
+            ${this.createLucideIcon(Copy, 12)}
+          </button>
         </div>`
     } else {
       return `
@@ -373,8 +388,9 @@ export class ChatRenderer {
             ) => {
               value: string
             }
+            highlightAuto: (text: string) => { value: string }
           }
-          if (h.getLanguage(lang)) {
+          if (lang && h.getLanguage(lang)) {
             try {
               const highlighted = h.highlight(code, {
                 language: lang,
@@ -384,6 +400,15 @@ export class ChatRenderer {
               codeElement.classList.add('hljs')
             } catch (err) {
               console.warn(`[ChatRenderer] Highlighting failed for ${lang}:`, err)
+            }
+          } else {
+            // Auto-highlight for blocks without lang or unknown lang
+            try {
+              const highlighted = h.highlightAuto(code)
+              codeElement.innerHTML = highlighted.value
+              codeElement.classList.add('hljs')
+            } catch (err) {
+              console.warn(`[ChatRenderer] Auto-highlighting failed:`, err)
             }
           }
         }

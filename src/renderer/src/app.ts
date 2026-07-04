@@ -587,6 +587,11 @@ class App {
       },
       () => this.editor.getCursorPosition()
     )
+
+    this.rightBar.setApplyCodeHandler((code) => {
+      this.editor.insertAtCursor(code)
+      this.statusBar.setStatus('Code applied to editor')
+    })
   }
 
   private async handleSettingChange(newSettings: Partial<AppSettings>): Promise<void> {

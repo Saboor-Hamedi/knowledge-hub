@@ -1,6 +1,6 @@
 import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
-import { createElement, Copy } from 'lucide'
+import { createElement, Copy, Play } from 'lucide'
 
 /**
  * MessageFormatter - Handles markdown rendering, HTML sanitization, and code block formatting
@@ -18,17 +18,34 @@ export class MessageFormatter {
         const normalizedLang = lang ? lang.toLowerCase().trim() : ''
         const escaped = this.md.utils.escapeHtml(str)
         const copyIcon = this.createCopyIcon()
-        const copyBtn = `<button class="rightbar__code-copy" data-action="copy-code" title="Copy code" aria-label="Copy code">${copyIcon}</button>`
+        const playIcon = this.createPlayIcon()
 
-        return normalizedLang
-          ? `<pre class="hljs"><code class="language-${this.md.utils.escapeHtml(normalizedLang)}" data-lang="${this.md.utils.escapeHtml(normalizedLang)}" data-code="${this.md.utils.escapeHtml(str)}">${escaped}</code>${copyBtn}</pre>`
-          : `<pre class="hljs"><code>${escaped}</code>${copyBtn}</pre>`
+        const copyBtn = `<button class="rightbar__code-action rightbar__code-copy" data-action="copy-code" title="Copy code" aria-label="Copy code">${copyIcon}</button>`
+        const applyBtn = `<button class="rightbar__code-action rightbar__code-apply" data-action="apply-code" title="Apply to Editor" aria-label="Apply to Editor">${playIcon}</button>`
+
+        const header = `<div class="rightbar__code-header">
+          <span class="rightbar__code-lang">${normalizedLang || 'code'}</span>
+          <div class="rightbar__code-actions">
+            ${applyBtn}
+            ${copyBtn}
+          </div>
+        </div>`
+
+        return `<div class="rightbar__code-block">
+          ${header}
+          <pre><code class="language-${this.md.utils.escapeHtml(normalizedLang)}" data-lang="${this.md.utils.escapeHtml(normalizedLang)}" data-code="${this.md.utils.escapeHtml(str)}">${escaped}</code></pre>
+        </div>`
       }
     })
   }
 
   private createCopyIcon(): string {
     const svgElement = createElement(Copy, { size: 14, 'stroke-width': 2 })
+    return svgElement?.outerHTML || ''
+  }
+
+  private createPlayIcon(): string {
+    const svgElement = createElement(Play, { size: 14, 'stroke-width': 2, fill: 'currentColor' })
     return svgElement?.outerHTML || ''
   }
 

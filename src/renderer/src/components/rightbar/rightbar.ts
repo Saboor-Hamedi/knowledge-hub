@@ -103,6 +103,7 @@ export class RightBar {
   private conversationController!: ConversationController
   private agentControlPanel!: HTMLElement
   private resolveConfirmation: ((val: boolean) => void) | null = null
+  private onApplyCode?: (code: string) => void
 
   constructor(containerId: string, aiSettingsModal: AISettingsModal) {
     this.aiSettingsModal = aiSettingsModal
@@ -239,6 +240,10 @@ export class RightBar {
     const context = { getEditorContent, getActiveNoteInfo, getCursorPosition }
     aiService.setEditorContext(context)
     agentService.setEditorContext(context)
+  }
+
+  setApplyCodeHandler(handler: (code: string) => void): void {
+    this.onApplyCode = handler
   }
 
   public focusInput(): void {
@@ -404,23 +409,44 @@ export class RightBar {
         const messageIndex = parseInt(btn.dataset.messageIndex || '0', 10)
         const message = state.messages[messageIndex]
         if (message) {
-          // SURGICAL COPY: Strip all internal UI tags [RUN:], [DONE:], [FILE:], etc.
-          // and thought blocks before copying to clipboard.
-          const cleanText = message.content
+          // If the message is a system action, we might want to copy its full content
+          // If it's an assistant message that follows rationale -> action, we want the rationale.
+          
+          let textToCopy = message.content
+
+          // Handle system messages (agent actions) differently
+          if (message.role === 'system') {
+            const lines = textToCopy.split('\n')
+            // If it's a multi-line system message, usually line 0 is the command and the rest is the output
+            if (lines.length > 1) {
+              const output = lines.slice(1).join('\n').trim()
+              if (output && !output.toLowerCase().includes('status: ok')) {
+                textToCopy = output
+              }
+            }
+          }
+
+          const cleanText = textToCopy
             .replace(/\[(?:RUN|DONE|FILE|TX):\s*[\s\S]*?\]/g, '')
             .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
             .replace(/\n{3,}/g, '\n\n')
             .trim()
 
+          // CRITICAL: If cleaning removed everything or left a generic status, 
+          // and this message had a previous rationale (rare in indexed state but possible),
+          // or if the user simply wants the original content.
+          const isGenericStatus = cleanText.toLowerCase() === 'status: ok' || cleanText === 'ok'
+          const finalSelection = (isGenericStatus || !cleanText) ? message.content.trim() : cleanText
+
           navigator.clipboard
-            .writeText(cleanText)
+            .writeText(finalSelection)
             .then(() => {
               this.showCopyFeedback(btn)
             })
             .catch(() => {
               // Fallback
               const textarea = document.createElement('textarea')
-              textarea.value = cleanText
+              textarea.value = finalSelection
               textarea.style.position = 'fixed'
               textarea.style.left = '-9999px'
               textarea.style.top = '0'
@@ -534,7 +560,7 @@ export class RightBar {
           btn.classList.toggle('is-collapsed', !isHidden)
         }
       } else if (action === 'copy-code') {
-        const pre = btn.closest('pre')
+        const pre = btn.closest('.rightbar__code-block')?.querySelector('pre')
         const codeEl = pre?.querySelector('code')
         if (codeEl) {
           const codeToCopy = codeEl.dataset.code || codeEl.textContent || ''
@@ -558,6 +584,14 @@ export class RightBar {
               }
               document.body.removeChild(textarea)
             })
+        }
+      } else if (action === 'apply-code') {
+        const pre = btn.closest('.rightbar__code-block')?.querySelector('pre')
+        const codeEl = pre?.querySelector('code')
+        const code = codeEl?.dataset.code || codeEl?.textContent
+        if (code && this.onApplyCode) {
+          this.onApplyCode(code)
+          this.showCopyFeedback(btn)
         }
       } else if (action === 'open-file') {
         const path = btn.dataset.path

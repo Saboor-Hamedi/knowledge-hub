@@ -50,7 +50,10 @@ export class ActivityBar {
     this.onViewChange = handler
   }
 
-  setActiveView(view: 'notes' | 'search' | 'settings' | 'graph' | 'history' | 'theme'): void {
+  setActiveView(
+    view: 'notes' | 'search' | 'settings' | 'graph' | 'history' | 'theme',
+    triggerHandler: boolean = true
+  ): void {
     // Update UI
     this.container.querySelectorAll('.activitybar__item').forEach((item) => {
       item.classList.remove('is-active')
@@ -70,7 +73,9 @@ export class ActivityBar {
     }
 
     // Trigger handler to update UI
-    this.onViewChange?.(view)
+    if (triggerHandler) {
+      this.onViewChange?.(view)
+    }
   }
 
   public render(): void {

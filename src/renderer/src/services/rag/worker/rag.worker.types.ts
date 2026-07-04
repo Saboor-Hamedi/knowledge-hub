@@ -10,6 +10,7 @@ export interface RagWorkerJob {
     | 'debug'
     | 'get-all-metadata'
     | 'switch-vault'
+    | 'update-metadata'
   payload: any
 }
 

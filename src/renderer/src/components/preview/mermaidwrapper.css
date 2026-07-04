@@ -13,59 +13,99 @@
   overflow: visible !important;
 }
 
+/* ── Edge labels ─────────────────────────────────────────────────────────── */
+
+/* The background rect mermaid injects behind edge labels — make it transparent */
+.preview-content .mermaid .edgeLabel rect,
+.preview-content .mermaid .edgeLabel .label rect,
+.preview-content .mermaid g.edgeLabel rect {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+/* The foreignObject wrapper that holds the edge label text */
+.preview-content .mermaid .edgeLabel,
+.preview-content .mermaid .edgeLabel foreignObject,
+.preview-content .mermaid .edgeLabel foreignObject > div,
+.preview-content .mermaid .edgeLabel foreignObject > body {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* The actual label text span inside foreignObject */
+.preview-content .mermaid .edgeLabel .label,
+.preview-content .mermaid .edgeLabel span,
+.preview-content .mermaid .edgeLabel p {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--text-soft, #aaaaaa) !important;
+  font-size: 11px;
+  font-family: inherit;
+  line-height: 1.3;
+  padding: 0 !important;
+  border: none !important;
+}
+
+/* ── Node labels ─────────────────────────────────────────────────────────── */
 .preview-content .mermaid .label {
   font-size: 11px;
   font-family: inherit;
   font-weight: 400;
+  color: var(--text, #cccccc);
 }
 
-.preview-content .mermaid .nodeLabel {
+.preview-content .mermaid .nodeLabel,
+.preview-content .mermaid .nodeLabel p {
   font-size: 11px;
   line-height: 1.3;
   font-family: inherit;
+  color: var(--text, #cccccc);
+  background: transparent !important;
 }
 
-.preview-content .mermaid .edgeLabel {
-  font-size: 10px;
-  line-height: 1.2;
-  font-family: inherit;
-}
-
-.preview-content .mermaid .edgeLabel {
-  background-color: var(--panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  padding: 1px 5px;
-  color: var(--text-soft);
-}
-
-.preview-content .mermaid .edgePath .path {
-  stroke: var(--text-muted);
+/* ── Edge paths ──────────────────────────────────────────────────────────── */
+.preview-content .mermaid .edgePath .path,
+.preview-content .mermaid path.flowchart-link,
+.preview-content .mermaid .flowchart-link {
+  stroke: var(--text-muted, #666680);
   stroke-width: 1.5;
   fill: none;
 }
 
+/* Arrow markers */
+.preview-content .mermaid marker path {
+  fill: var(--text-muted, #666680) !important;
+  stroke: none !important;
+}
+
+/* ── Nodes ───────────────────────────────────────────────────────────────── */
 .preview-content .mermaid .node rect,
 .preview-content .mermaid .node circle,
 .preview-content .mermaid .node ellipse,
 .preview-content .mermaid .node polygon,
 .preview-content .mermaid .node path {
-  fill: var(--panel-strong);
-  stroke: var(--border);
+  fill: var(--panel-strong, #2a2a35) !important;
+  stroke: var(--border, rgba(255,255,255,0.15)) !important;
   stroke-width: 1.5;
 }
 
-.preview-content .mermaid .cluster {
-  fill: var(--panel);
-  stroke: var(--border);
+/* ── Clusters / subgraphs ────────────────────────────────────────────────── */
+.preview-content .mermaid .cluster rect {
+  fill: var(--panel, rgba(30,30,40,0.6)) !important;
+  stroke: var(--border, rgba(255,255,255,0.1)) !important;
   stroke-width: 1;
 }
 
-.preview-content .mermaid .cluster-label {
-  fill: var(--text-soft);
+.preview-content .mermaid .cluster-label,
+.preview-content .mermaid .clusterLabel {
+  fill: var(--text-soft, #aaaaaa);
   font-size: 10px;
 }
 
+/* ── Code block header adjustments for mermaid ───────────────────────────── */
 .code-block-wrapper:has(.mermaid) .code-block-header {
   min-height: 28px;
   padding: 4px 10px;

@@ -382,11 +382,25 @@ export class PreviewComponent {
         const target = link.dataset.wikiLink
         void wikiLinkPreviewModal.show(target, link.getBoundingClientRect(), async (id) => {
           try {
-            const note = state.notes.find(
-              (n) => n.id.toLowerCase() === id.toLowerCase() ||
-                (n.title && n.title.toLowerCase() === id.toLowerCase()) ||
-                (n.path && `${n.path}/${n.id}`.toLowerCase() === id.toLowerCase())
-            )
+            const cleanTarget = id.trim().toLowerCase()
+            const targetNoExt = cleanTarget.endsWith('.md') ? cleanTarget.slice(0, -3) : cleanTarget
+            const getBasename = (p: string): string => p.split(/[\/\\]/).pop() || p
+
+            const note = state.notes.find((n) => {
+              const idLow = n.id.toLowerCase()
+              const idNoExt = idLow.endsWith('.md') ? idLow.slice(0, -3) : idLow
+              const baseLow = getBasename(idLow)
+              const baseNoExt = baseLow.endsWith('.md') ? baseLow.slice(0, -3) : baseLow
+              const titleLow = (n.title || '').toLowerCase()
+              const fullPathLow = (n.path ? `${n.path}/${n.id}` : n.id).toLowerCase()
+              const fullPathNoExt = fullPathLow.endsWith('.md') ? fullPathLow.slice(0, -3) : fullPathLow
+              return (
+                idLow === cleanTarget || idNoExt === cleanTarget ||
+                baseLow === cleanTarget || baseNoExt === cleanTarget ||
+                titleLow === cleanTarget || titleLow === targetNoExt ||
+                fullPathLow === cleanTarget || fullPathNoExt === cleanTarget
+              )
+            })
             if (!note) return null
             const res = await window.api.loadNote(note.id, note.path)
             return res?.content || null

@@ -178,7 +178,7 @@ class App {
 
     this.wikiLinkService = new WikiLinkService({
       openNote: (id, path) => this.vaultHandler.openNote(id, path),
-      createNote: (title, path) => this.fileOps.createNote(title, path),
+      createNote: (title, path) => this.fileOps.createNote(title, undefined, path),
       getEditorValue: () => this.editor.getValue(),
       setStatus: (message) => this.statusBar.setStatus(message)
     })
@@ -414,7 +414,7 @@ class App {
       // Restore active view (explorer, search, history, etc.)
       if (state.settings.activeView) {
         state.activeView = state.settings.activeView
-        this.activityBar.setActiveView(state.settings.activeView)
+        this.activityBar.setActiveView(state.settings.activeView, false)
       }
     }
 
@@ -469,16 +469,8 @@ class App {
       if (view === 'lock') return void securityService.lock()
 
       const isSidebarView = view === 'notes' || view === 'search'
-      // Only change sidebar visibility when it's a user-driven view switch.
-      // If the sidebar is intentionally hidden (sidebarVisible === false in settings),
-      // a programmatic setActiveView('notes') on startup must not force it open.
-      if (isSidebarView && state.settings?.sidebarVisible === false) {
-        // User has hidden the sidebar — just switch mode without showing it
-        this.sidebar.setMode(view === 'search' ? 'search' : 'explorer')
-      } else {
-        this.sidebar.setVisible(isSidebarView)
-        this.sidebar.setMode(view === 'search' ? 'search' : 'explorer')
-      }
+      this.sidebar.setVisible(isSidebarView)
+      this.sidebar.setMode(view === 'search' ? 'search' : 'explorer')
       this.viewOrchestrator.updateViewVisibility()
       this.editor.layout()
     })
@@ -494,14 +486,18 @@ class App {
     this.sidebar.setNoteSelectHandler((id, path, highlight) => {
       void this.vaultHandler.openNote(id, path, 'editor', highlight)
     })
-    this.sidebar.setNoteCreateHandler((path) => void this.fileOps.createNote(undefined, path))
+    this.sidebar.setNoteCreateHandler(
+      (path) => void this.fileOps.createNote(undefined, undefined, path)
+    )
     this.sidebar.setNoteDeleteHandler(
       (id, path) => void this.fileOps.deleteItems([{ id, type: 'note', path }])
     )
     this.sidebar.setItemsDeleteHandler((items) => void this.fileOps.deleteItems(items))
     this.sidebar.setNoteMoveHandler((id, from, to) => this.fileOps.handleNoteMove(id, from, to))
     this.sidebar.setFolderMoveHandler((src, tgt) => this.fileOps.handleFolderMove(src, tgt))
-    this.sidebar.setFolderCreateHandler((path) => void this.fileOps.createFolder(path))
+    this.sidebar.setFolderCreateHandler(
+      (path) => void this.fileOps.createFolder('New Folder', path)
+    )
     this.sidebar.setGraphClickHandler(() => void this.viewOrchestrator.openGraph())
     this.sidebar.setSearchHandler((query, options) => {
       this.editor.highlightTerm(query, options.matchCase, options.wholeWord, options.useRegex)
@@ -590,7 +586,16 @@ class App {
     this.editor.setSaveHandler((payload) => void this.fileOps.saveNote(payload))
     this.editor.setDropHandler((p, f) => this.handleDrop(p, f))
     this.editor.setLinkClickHandler((t) => void this.wikiLinkService.openWikiLink(t))
-    this.editor.setHoverContentHandler((t) => this.wikiLinkService.getNotePreview(t))
+    this.editor.setHoverContentHandler(async (t) => {
+      const note = this.wikiLinkService.resolveNote(t)
+      if (!note) return null
+      try {
+        const loaded = await window.api.loadNote(note.id, note.path)
+        return loaded?.content || null
+      } catch {
+        return null
+      }
+    })
     this.editor.setContextMenuHandler((e) => this.handleEditorContextMenu(e))
     this.editor.setCursorPositionChangeHandler(() => this.viewOrchestrator.updateEditorMetrics())
     this.editor.attachKeyboardShortcuts()

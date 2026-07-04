@@ -48,7 +48,9 @@ export class VaultHandler {
         focus?: () => void
       }
       breadcrumbs: { render: () => void; clear: () => void }
-      activityBar: { setActiveView: (view: 'notes' | 'search' | 'settings') => void }
+      activityBar: {
+        setActiveView: (view: 'notes' | 'search' | 'settings', triggerHandler?: boolean) => void
+      }
       welcomePage: { show: () => void; hide: () => void; isVisible: () => boolean }
     },
     private callbacks: {
@@ -247,7 +249,7 @@ export class VaultHandler {
     // Only switch to 'notes' if we aren't in search or history mode.
     // This allows opening search results or viewing history without losing the context.
     if (isSidebarVisible && !isSearchActive && !isHistoryActive) {
-      this.components.activityBar.setActiveView('notes')
+      this.components.activityBar.setActiveView('notes', false)
     }
 
     const note = await window.api.loadNote(id, path)

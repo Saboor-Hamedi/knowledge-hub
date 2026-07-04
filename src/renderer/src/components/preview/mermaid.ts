@@ -65,6 +65,18 @@ function buildMermaidWrapper(source: string, svgHtml: string): HTMLDivElement {
   return wrapper
 }
 
+const MERMAID_KEYWORDS = [
+  'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram',
+  'erDiagram', 'journey', 'gantt', 'pie', 'gitGraph', 'mindmap', 'timeline',
+  'xychart', 'block', 'packet', 'architecture', 'requirementDiagram', 'C4Context',
+  'quadrantChart', 'sankey-beta', 'zenuml'
+]
+
+function isCompleteMermaidSource(source: string): boolean {
+  const firstLine = source.trimStart().split('\n')[0].trim().toLowerCase()
+  return MERMAID_KEYWORDS.some((kw) => firstLine.startsWith(kw.toLowerCase()))
+}
+
 export async function renderMermaid(container: HTMLElement, savedSvgs?: Map<string, string>): Promise<void> {
   const blocks = container.querySelectorAll('pre code.language-mermaid')
   if (!blocks.length) return
@@ -77,6 +89,9 @@ export async function renderMermaid(container: HTMLElement, savedSvgs?: Map<stri
     if (!pre) continue
 
     const source = codeEl.textContent || ''
+
+    // Skip incomplete/mid-type blocks that don't yet have a diagram type keyword
+    if (!isCompleteMermaidSource(source)) continue
 
     const cached = svgCache.get(source) || savedSvgs?.get(source)
     if (cached) {

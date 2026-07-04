@@ -172,25 +172,20 @@ export class SidebarTree {
     const shell = document.querySelector('.vscode-shell') as HTMLElement
     if (!shell) return
     shell.classList.toggle('sidebar-hidden')
-    const visible = !shell.classList.contains('sidebar-hidden')
-    this.onVisibilityChange?.(visible)
+    this.onVisibilityChange?.(!shell.classList.contains('sidebar-hidden'))
   }
 
   hide(): void {
     const shell = document.querySelector('.vscode-shell') as HTMLElement
-    const sidebar = document.getElementById('sidebar')
     if (!shell) return
     shell.classList.add('sidebar-hidden')
-    if (sidebar) sidebar.style.display = 'none'
     this.onVisibilityChange?.(false)
   }
 
   show(): void {
     const shell = document.querySelector('.vscode-shell') as HTMLElement
-    const sidebar = document.getElementById('sidebar')
     if (!shell) return
     shell.classList.remove('sidebar-hidden')
-    if (sidebar) sidebar.style.display = ''
     this.onVisibilityChange?.(true)
   }
 
@@ -2020,7 +2015,7 @@ export class SidebarTree {
   }
 
   private getDefaultParentPath(): string | undefined {
-    return this.selectedFolderPath || undefined
+    return this.getSelectedFolderPath() || undefined
   }
 
   /**

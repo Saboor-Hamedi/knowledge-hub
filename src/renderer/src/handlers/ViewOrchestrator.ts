@@ -33,7 +33,10 @@ export class ViewOrchestrator {
         updateVisibility: () => void
       }
       activityBar: {
-        setActiveView: (view: 'notes' | 'search' | 'settings' | 'graph' | 'history') => void
+        setActiveView: (
+          view: 'notes' | 'search' | 'settings' | 'graph' | 'history',
+          triggerHandler?: boolean
+        ) => void
       }
       breadcrumbs: { render: () => void }
       graphTabView: { open: () => Promise<void>; close: () => void }
@@ -337,15 +340,12 @@ export class ViewOrchestrator {
   public restoreLayout(settings: AppSettings): void {
     const shell = document.querySelector('.vscode-shell') as HTMLElement
     const rightPanel = document.getElementById('rightPanel') as HTMLElement
-    const sidebar = document.getElementById('sidebar') as HTMLElement
     if (!shell || !rightPanel) return
 
     if (settings.sidebarVisible === false) {
       shell.classList.add('sidebar-hidden')
-      if (sidebar) sidebar.style.display = 'none'
     } else {
       shell.classList.remove('sidebar-hidden')
-      if (sidebar) sidebar.style.display = ''
     }
 
     if (settings.rightPanelVisible) {

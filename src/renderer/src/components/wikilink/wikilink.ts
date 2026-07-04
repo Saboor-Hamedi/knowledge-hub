@@ -1,5 +1,136 @@
 import { state } from '../../core/state'
+import MarkdownIt from 'markdown-it'
+import DOMPurify from 'dompurify'
+import hljs from 'highlight.js'
+import { renderMermaid } from '../preview/mermaid'
+import { checkIcon, copyIcon, imageIcon, failIcon, flashButton, copyHtmlAsImage } from '../preview/capture'
+import '../preview/codewrapper.css'
+import '../preview/preview.css'
 
+// ── Shared MarkdownIt instance for popover renders ────────────────────────────
+const md = new MarkdownIt({ html: true, linkify: true, breaks: false, typographer: true })
+
+// Register wiki_link rule
+md.inline.ruler.before('link', 'wiki_link', (state, silent) => {
+  const max = state.posMax
+  const start = state.pos
+  if (state.src.charCodeAt(start) !== 0x5b || state.src.charCodeAt(start + 1) !== 0x5b) return false
+  let pos = start + 2
+  let labelEnd = -1
+  while (pos < max) {
+    if (state.src.charCodeAt(pos) === 0x5d && state.src.charCodeAt(pos + 1) === 0x5d) { labelEnd = pos; pos += 2; break }
+    pos++
+  }
+  if (labelEnd < 0) return false
+  const label = state.src.slice(start + 2, labelEnd)
+  if (!label) return false
+  if (!silent) { const t = state.push('wiki_link', 'a', 0); t.content = label; t.attrSet('href', '#'); t.attrSet('data-wiki-link', label); t.markup = '[[' }
+  state.pos = pos
+  return true
+})
+md.renderer.rules.wiki_link = (tokens, idx) => {
+  const label = tokens[idx].content
+  return `<a href="#" class="wiki-link" data-wiki-link="${md.utils.escapeHtml(label)}">${md.utils.escapeHtml(label)}</a>`
+}
+
+// ── Wrap code blocks with header + copy/image buttons ────────────────────────
+function wrapCodeBlocks(container: HTMLElement): void {
+  container.querySelectorAll('pre').forEach((pre) => {
+    const el = pre as HTMLElement
+    if (el.parentElement?.classList.contains('code-block-wrapper')) return
+    const code = el.querySelector('code')
+    const lang = code?.className?.replace('language-', '') || ''
+    if (lang === 'mermaid') return
+
+    const wrapper = document.createElement('div')
+    wrapper.className = 'code-block-wrapper'
+
+    const header = document.createElement('div')
+    header.className = 'code-block-header'
+
+    const label = document.createElement('span')
+    label.className = 'code-block-language'
+    label.textContent = lang || 'code'
+    header.appendChild(label)
+
+    const actions = document.createElement('div')
+    actions.style.cssText = 'display:flex;gap:4px'
+
+    // Copy code button
+    const copyBtn = document.createElement('button')
+    copyBtn.className = 'code-copy-button'
+    copyBtn.title = 'Copy code'
+    copyBtn.dataset.restoreIcon = copyIcon
+    copyBtn.dataset.restoreTitle = 'Copy code'
+    copyBtn.innerHTML = copyIcon
+    copyBtn.addEventListener('click', async () => {
+      if (!code) return
+      try {
+        await navigator.clipboard.writeText(code.textContent || '')
+        flashButton(copyBtn, checkIcon(), 'Copied!')
+      } catch { /* ignore */ }
+    })
+
+    // Copy as image button
+    const imgBtn = document.createElement('button')
+    imgBtn.className = 'code-copy-button'
+    imgBtn.title = 'Copy as image'
+    imgBtn.dataset.restoreIcon = imageIcon
+    imgBtn.dataset.restoreTitle = 'Copy as image'
+    imgBtn.innerHTML = imageIcon
+    imgBtn.addEventListener('click', async () => {
+      try {
+        await copyHtmlAsImage(el)
+        flashButton(imgBtn, checkIcon(), 'Copied image!')
+      } catch {
+        flashButton(imgBtn, failIcon, 'Failed')
+      }
+    })
+
+    actions.append(copyBtn, imgBtn)
+    header.appendChild(actions)
+
+    el.parentNode?.insertBefore(wrapper, el)
+    wrapper.append(header, el)
+  })
+}
+
+function rehighlightCode(container: HTMLElement): void {
+  container.querySelectorAll('pre code').forEach((block) => {
+    const el = block as HTMLElement
+    const lang = el.className.match(/language-(\w+)/)?.[1]
+    if (lang && hljs.getLanguage(lang)) {
+      try { hljs.highlightElement(el) } catch { /* ignore */ }
+    }
+  })
+}
+
+function stripFrontmatter(content: string): string {
+  return content.replace(/^---[\s\S]*?\n---\n?/, '')
+}
+
+// ── Render markdown content into a container element ─────────────────────────
+function renderMarkdownInto(rawContent: string, container: HTMLElement): void {
+  const content = stripFrontmatter(rawContent)
+
+  // Save existing mermaid SVGs to avoid re-render flicker
+  const mermaidSvgMap = new Map<string, string>()
+  container.querySelectorAll('.mermaid svg').forEach((svg) => {
+    const wrapper = svg.closest('.code-block-wrapper')
+    if (wrapper) mermaidSvgMap.set(wrapper.outerHTML, svg.outerHTML)
+  })
+
+  container.innerHTML = DOMPurify.sanitize(
+    md.render(content.replace(/!\[\s+([^\]]+)\]/g, '![$1]')),
+    { ADD_ATTR: ['class', 'data-wiki-link', 'src', 'alt', 'title'], ADD_TAGS: ['pre', 'code', 'img'], ALLOW_DATA_ATTR: true, KEEP_CONTENT: true, ALLOW_UNKNOWN_PROTOCOLS: false }
+  )
+
+  renderMermaid(container, mermaidSvgMap)
+  wrapCodeBlocks(container)
+  rehighlightCode(container)
+}
+
+// ── WikiLinkPreviewModal ──────────────────────────────────────────────────────
 export class WikiLinkPreviewModal {
   private el: HTMLElement
   private titleEl: HTMLElement
@@ -31,7 +162,7 @@ export class WikiLinkPreviewModal {
           </button>
         </div>
       </div>
-      <div class="wikilink-preview-body"></div>
+      <div class="wikilink-preview-body"><div class="wikilink-preview-content"></div></div>
     `
     document.body.appendChild(this.el)
 
@@ -86,7 +217,11 @@ export class WikiLinkPreviewModal {
 
     this.titleEl.textContent = `📄 ${target}`
     this.openBtn.title = `Open Note (${target})`
-    this.bodyEl.innerHTML = '<div class="wikilink-preview-loading">Loading preview...</div>'
+
+    // Show loading state
+    const contentEl = this.bodyEl.querySelector('.wikilink-preview-content') as HTMLElement
+    contentEl.innerHTML = '<div class="wikilink-preview-loading">Loading preview...</div>'
+
     this.el.style.display = 'flex'
     this.position(rect)
     this.el.classList.add('is-visible')
@@ -95,6 +230,7 @@ export class WikiLinkPreviewModal {
     const preview = await getNotePreview(target)
     if (this.currentTarget !== target) return
 
+    // Resolve note title
     const note = state.notes.find(
       (n) =>
         n.id.toLowerCase() === target.toLowerCase() ||
@@ -102,19 +238,17 @@ export class WikiLinkPreviewModal {
         (n.path && `${n.path}/${n.id}`.toLowerCase() === target.toLowerCase())
     )
     const noteTitle = note ? note.title || note.id : target
-    const previewText = preview || (note ? 'Note is empty' : 'Note not found')
-
-    const formattedPreview = previewText
-      .replace(/\n{3,}/g, '\n\n')
-      .replace(/^#+\s+/gm, '')
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/`(.*?)`/g, '$1')
-      .replace(/\[\[(.*?)\]\]/g, '$1')
-      .trim()
-
     this.titleEl.textContent = `📄 ${noteTitle}`
-    this.bodyEl.innerHTML = `<div class="wikilink-preview-content">${formattedPreview}</div>`
+
+    if (!preview) {
+      contentEl.innerHTML = '<div class="wikilink-preview-loading">Note not found</div>'
+    } else if (!preview.trim()) {
+      contentEl.innerHTML = '<div class="wikilink-preview-loading">Note is empty</div>'
+    } else {
+      // Render full markdown pipeline — same as main preview
+      renderMarkdownInto(preview, contentEl)
+    }
+
     this.position(rect)
   }
 
@@ -122,7 +256,7 @@ export class WikiLinkPreviewModal {
     this.el.style.display = 'flex'
     const modalRect = this.el.getBoundingClientRect()
     const targetCenterX = rect.left + rect.width / 2
-    let left = Math.max(16, Math.min(window.innerWidth - modalRect.width - 16, targetCenterX - modalRect.width / 2))
+    const left = Math.max(16, Math.min(window.innerWidth - modalRect.width - 16, targetCenterX - modalRect.width / 2))
 
     if (rect.bottom + 8 + modalRect.height > window.innerHeight - 16 && rect.top > window.innerHeight - rect.bottom) {
       this.el.style.top = `${Math.max(16, rect.top - modalRect.height - 8)}px`

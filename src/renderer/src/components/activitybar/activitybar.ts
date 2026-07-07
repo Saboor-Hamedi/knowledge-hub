@@ -123,7 +123,8 @@ export class ActivityBar {
     const lockIcon = this.createLucideIcon(Lock)
     const historyIcon = this.createLucideIcon(History)
 
-    const sidebarVisible = state.settings?.sidebarVisible !== false
+    const shell = document.querySelector('.vscode-shell')
+    const sidebarVisible = shell ? !shell.classList.contains('sidebar-hidden') : (state.settings?.sidebarVisible !== false)
 
     this.container.innerHTML = `
       <div class="activitybar__top">
@@ -281,9 +282,13 @@ export class ActivityBar {
         return
       }
 
-      // Toggle behavior: if already active, deactivate and close sidebar
-      if (button.classList.contains('is-active')) {
+      // Toggle behavior: if already active AND sidebar is currently visible, close sidebar
+      const shell = document.querySelector('.vscode-shell')
+      const isSidebarVisible = shell ? !shell.classList.contains('sidebar-hidden') : (state.settings?.sidebarVisible !== false)
+
+      if (button.classList.contains('is-active') && isSidebarVisible) {
         button.classList.remove('is-active')
+        if (shell) shell.classList.add('sidebar-hidden')
         if (state.settings) {
           state.settings.sidebarVisible = false
           void window.api.updateSettings({ sidebarVisible: false })

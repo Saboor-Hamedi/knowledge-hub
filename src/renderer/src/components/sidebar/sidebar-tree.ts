@@ -6,7 +6,6 @@ import { sortTreeItems } from '../../utils/tree-utils'
 import { contextMenu } from '../contextmenu/contextmenu'
 import getFileIcon from '../../utils/fileIconMappers'
 import {
-  Search,
   FolderPlus,
   FilePlus,
   ChevronRight,
@@ -21,7 +20,9 @@ import {
   createElement,
   Pencil,
   ClipboardCopy,
-  Files
+  Files,
+  RefreshCw,
+  ListCollapse
 } from 'lucide'
 import { setTooltip } from '../tooltip/tooltip'
 import './sidebar-tree.css'
@@ -55,6 +56,7 @@ export class SidebarTree {
   private onFolderMove?: (sourcePath: string, targetPath: string) => Promise<void>
   private onItemsDelete?: (items: { id: string; type: 'note' | 'folder'; path?: string }[]) => void
   private onFolderCreate?: (parentPath?: string) => void
+  private onRefresh?: () => void
   private editingId: string | null = null
   // private draggedItem: { type: 'note' | 'folder'; id: string; path?: string } | null = null
   private selectedFolderPath: string | null = null
@@ -158,6 +160,10 @@ export class SidebarTree {
 
   setFolderCreateHandler(handler: (parentPath?: string) => void): void {
     this.onFolderCreate = handler
+  }
+
+  setRefreshHandler(handler: () => void): void {
+    this.onRefresh = handler
   }
 
   setSearchHandler(handler: (query: string, options: SearchOptions) => void): void {
@@ -681,9 +687,10 @@ export class SidebarTree {
   }
 
   private render(): void {
-    const newFolderIcon = this.createLucideIcon(FolderPlus, 14, 2.2)
-    const newNoteIcon = this.createLucideIcon(FilePlus, 14, 2.2)
-    const revealIcon = this.createLucideIcon(Search, 14, 2.2)
+    const newFileIcon = this.createLucideIcon(FilePlus, 15, 1.8)
+    const newFolderIcon = this.createLucideIcon(FolderPlus, 15, 1.8)
+    const refreshIcon = this.createLucideIcon(RefreshCw, 15, 1.8)
+    const collapseIcon = this.createLucideIcon(ListCollapse, 15, 1.8)
 
     this.container.innerHTML = `
       <header class="sidebar__header">
@@ -691,14 +698,17 @@ export class SidebarTree {
           <span class="sidebar__title-text">EXPLORER</span>
         </div>
         <div class="sidebar__actions">
+          <button class="sidebar__action" data-tooltip="New Note (Ctrl+N)" data-action="new">
+            ${newFileIcon}
+          </button>
           <button class="sidebar__action" data-tooltip="New Folder" data-action="new-folder">
             ${newFolderIcon}
           </button>
-          <button class="sidebar__action" data-tooltip="New Note (Ctrl+N)" data-action="new">
-            ${newNoteIcon}
+          <button class="sidebar__action" data-tooltip="Refresh Vault" data-action="refresh">
+            ${refreshIcon}
           </button>
-          <button class="sidebar__action" data-tooltip="Reveal in Explorer" data-action="reveal">
-            ${revealIcon}
+          <button class="sidebar__action" data-tooltip="${state.expandedFolders.size > 0 ? 'Collapse All Folders' : 'Expand All Folders'}" data-action="collapse-all">
+            ${collapseIcon}
           </button>
         </div>
       </header>
@@ -794,6 +804,11 @@ export class SidebarTree {
 
     this.renderItems(items, innerContainer, 1)
     this.bodyEl.appendChild(innerContainer)
+
+    const collapseBtn = this.headerEl?.querySelector('[data-action="collapse-all"]') as HTMLElement
+    if (collapseBtn) {
+      setTooltip(collapseBtn, state.expandedFolders.size > 0 ? 'Collapse All Folders' : 'Expand All Folders')
+    }
   }
 
   private sortTree(items: (FolderItem | NoteMeta)[]): (FolderItem | NoteMeta)[] {
@@ -984,6 +999,10 @@ export class SidebarTree {
         this.onNoteCreate?.(this.getDefaultParentPath())
       } else if (action === 'new-folder') {
         this.onFolderCreate?.(this.getDefaultParentPath())
+      } else if (action === 'refresh') {
+        this.onRefresh?.()
+      } else if (action === 'collapse-all') {
+        this.toggleCollapseAll()
       } else if (action === 'reveal') {
         void window.api.revealVault(state.activeId || undefined)
       } else if (action === 'graph') {
@@ -1028,6 +1047,9 @@ export class SidebarTree {
       if (target.classList.contains('tree-item__expand') || target.closest('.tree-item__expand')) {
         event.stopPropagation()
         if (item.dataset.type === 'folder') {
+          this.selectedId = item.dataset.id!
+          this.selectedFolderPath = item.dataset.id!
+          this.updateSelectionStates()
           this.toggleFolder(item.dataset.id!)
         }
         return
@@ -1220,6 +1242,26 @@ export class SidebarTree {
       const newItem = this.bodyEl.querySelector(`.tree-item[data-id="${id}"]`) as HTMLElement
       newItem?.focus()
     }, 0)
+  }
+
+  private toggleCollapseAll(): void {
+    if (state.expandedFolders.size > 0) {
+      state.expandedFolders.clear()
+    } else {
+      const collectFolderIds = (items: (FolderItem | NoteMeta)[]): void => {
+        items.forEach((item) => {
+          if (item.type === 'folder') {
+            state.expandedFolders.add(item.id)
+            if ((item as FolderItem).children) collectFolderIds((item as FolderItem).children!)
+          }
+        })
+      }
+      if (state.tree) collectFolderIds(state.tree)
+    }
+    void window.api.updateSettings({
+      expandedFolders: Array.from(state.expandedFolders)
+    })
+    this.renderTree(this.searchEl.value)
   }
 
   private handleDragStart(event: DragEvent): void {
@@ -1957,9 +1999,40 @@ export class SidebarTree {
 
   updateSelection(id: string): void {
     this.selectedId = id
+    if (!id) {
+      this.selectedFolderPath = null
+      state.selectedIds.clear()
+      this.updateSelectionStates()
+      return
+    }
     if (!state.selectedIds.has(id)) {
       state.selectedIds.clear()
       state.selectedIds.add(id)
+    }
+    const note = (state.notes as NoteMeta[]).find((n) => n.id === id)
+    if (note) {
+      this.selectedFolderPath = note.path || null
+      if (note.path) {
+        const parts = note.path.replace(/\\/g, '/').split('/')
+        let currentPath = ''
+        let changed = false
+        for (const part of parts) {
+          if (!part) continue
+          currentPath = currentPath ? `${currentPath}/${part}` : part
+          if (!state.expandedFolders.has(currentPath)) {
+            state.expandedFolders.add(currentPath)
+            changed = true
+          }
+        }
+        if (changed) {
+          void window.api.updateSettings({
+            expandedFolders: Array.from(state.expandedFolders)
+          })
+          this.renderTree(this.searchEl.value)
+        }
+      }
+    } else {
+      this.selectedFolderPath = id
     }
     this.updateSelectionStates()
   }
@@ -2000,7 +2073,11 @@ export class SidebarTree {
   }
 
   getSelectedFolderPath(): string | null {
-    if (this.selectedFolderPath) return this.selectedFolderPath
+    if (!this.selectedId && state.selectedIds.size === 0) {
+      return null
+    }
+
+    if (this.selectedFolderPath !== null) return this.selectedFolderPath
 
     // Fallback: Use the folder of the active note
     if (state.activeId) {

@@ -498,6 +498,7 @@ class App {
     this.sidebar.setFolderCreateHandler(
       (path) => void this.fileOps.createFolder('New Folder', path)
     )
+    this.sidebar.setRefreshHandler(() => void this.vaultHandler.refreshNotes())
     this.sidebar.setGraphClickHandler(() => void this.viewOrchestrator.openGraph())
     this.sidebar.setSearchHandler((query, options) => {
       this.editor.highlightTerm(query, options.matchCase, options.wholeWord, options.useRegex)

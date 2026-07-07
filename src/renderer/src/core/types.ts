@@ -144,4 +144,21 @@ export type AppSettings = {
     buttonHoverColor?: string
     buttonActiveColor?: string
   }
+  // Database settings
+  database?: {
+    host?: string
+    port?: number
+    database?: string
+    user?: string
+    password?: string
+    autoConnect?: boolean
+  }
+  // Extractor settings
+  extractor?: {
+    enabled?: boolean
+    autoExtract?: boolean
+    chunkSize?: number
+    chunkOverlap?: number
+    watchExtensions?: string[]
+  }
 }

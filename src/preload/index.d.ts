@@ -137,6 +137,23 @@ type AppSettings = {
     buttonHoverColor?: string
     buttonActiveColor?: string
   }
+  // Database settings
+  database?: {
+    host?: string
+    port?: number
+    database?: string
+    user?: string
+    password?: string
+    autoConnect?: boolean
+  }
+  // Extractor settings
+  extractor?: {
+    enabled?: boolean
+    autoExtract?: boolean
+    chunkSize?: number
+    chunkOverlap?: number
+    watchExtensions?: string[]
+  }
 }
 
 type WindowApi = {
@@ -145,6 +162,40 @@ type WindowApi = {
   unmaximize: () => Promise<void>
   isMaximized: () => Promise<boolean>
   close: () => Promise<void>
+}
+
+type PgConfig = {
+  host?: string
+  port?: number
+  database?: string
+  user?: string
+  password?: string
+}
+
+type DatabaseStatus = {
+  connected: boolean
+  total_docs: number
+  total_chunks: number
+  by_type: Record<string, number>
+}
+
+type ExtractorStatus = {
+  watching: boolean
+  databaseConnected: boolean
+  total_docs: number
+  total_chunks: number
+  by_type: Record<string, number>
+}
+
+type SearchResult = {
+  chunk_id: string
+  document_id: string
+  chunk_index: number
+  content: string
+  vault_path: string
+  file_name: string
+  file_type: string
+  similarity: number
 }
 
 type NoteApi = {
@@ -221,6 +272,25 @@ type NoteApi = {
     setMetrics: (metrics: { words: number; chars: number; lines: number } | null) => void
     setCursor: (pos: { ln: number; col: number } | null) => void
     updateVisibility: () => void
+  }
+  database: {
+    connect: (config?: PgConfig) => Promise<{ success: boolean; message: string }>
+    disconnect: () => Promise<{ success: boolean }>
+    getStatus: () => Promise<DatabaseStatus>
+    query: (sql: string, params?: unknown[]) => Promise<{ success: boolean; rows?: unknown[]; error?: string }>
+  }
+  extractor: {
+    start: (vaultPath?: string) => Promise<{ success: boolean; message: string }>
+    stop: () => Promise<{ success: boolean }>
+    extractFile: (filePath: string) => Promise<{ success: boolean; chunkCount?: number; error?: string }>
+    reindex: () => Promise<{ success: boolean; processed?: number; failed?: number; message?: string }>
+    getStatus: () => Promise<ExtractorStatus>
+    search: (queryVector: number[], limit?: number) => Promise<{ success: boolean; results?: SearchResult[]; error?: string }>
+    hybridSearch: (keywordQuery: string, queryVector: number[], limit?: number) => Promise<{ success: boolean; results?: SearchResult[]; error?: string }>
+    startBatchIngestion: (filePaths: string[]) => Promise<{ success: boolean; message?: string }>
+    cancelBatchIngestion: () => Promise<{ success: boolean }>
+    getBatchStatus: () => Promise<{ isProcessing: boolean; percent: number; status: string; queue: string[] }>
+    onProgress: (callback: (percent: number, status: string) => void) => () => void
   }
 }
 

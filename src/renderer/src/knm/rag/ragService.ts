@@ -33,6 +33,9 @@ export class RagService {
     }
 
     await this.embeddingProvider.init()
+    
+    // Start background embedding generation for chunks that need it (e.g., extracted PDFs)
+    this.startBackfill()
   }
 
   private initWorker(): void {
@@ -140,6 +143,22 @@ export class RagService {
     }
   }
 
+  async embed(text: string): Promise<number[] | null> {
+    if (!this.embeddingProvider) {
+      return null
+    }
+    try {
+      if (this.embeddingProvider instanceof LocalEmbeddingProvider) {
+        return this.dispatch('embed', { text })
+      } else {
+        return await this.embeddingProvider.embed(text)
+      }
+    } catch (err) {
+      console.error('[RagService] Embed failed:', err)
+      return null
+    }
+  }
+
   /**
    * Record user feedback for a search result
    * @param query The original query string
@@ -207,6 +226,51 @@ export class RagService {
     // Basic hash-like key from path
     const dbName = `vectors-${vaultPath.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`
     await this.dispatch('switch-vault', { dbName })
+  }
+
+  destroy(): void {
+    if (this.worker) {
+      this.worker.terminate()
+      this.worker = null
+    }
+    window.removeEventListener('beforeunload', this.handleUnload)
+    if (this.backfillTimer) {
+      clearInterval(this.backfillTimer)
+      this.backfillTimer = null
+    }
+  }
+  private backfillTimer: number | null = null
+  private isBackfilling = false
+
+  private async startBackfill(): Promise<void> {
+    if (this.backfillTimer) return
+    
+    const runBackfill = async () => {
+      if (!this.embeddingProvider || !window.api.extractor.getUnembeddedChunks || this.isBackfilling) return
+      
+      this.isBackfilling = true
+      try {
+        const res = await window.api.extractor.getUnembeddedChunks(10)
+        if (res.success && res.chunks && res.chunks.length > 0) {
+          for (const chunk of res.chunks) {
+            // We use standard embed here. We will throttle the loop slightly to let high-priority items slip through.
+            const vector = await this.embeddingProvider.embed(chunk.content)
+            await window.api.extractor.updateChunkEmbedding(chunk.id, vector)
+            // Yield to the event loop so other worker messages (like search) can be processed
+            await new Promise(r => setTimeout(r, 100))
+          }
+        }
+      } catch (err) {
+        // Silently ignore backfill errors
+      } finally {
+        this.isBackfilling = false
+      }
+    }
+    
+    // Run backfill every 2 seconds
+    this.backfillTimer = setInterval(runBackfill, 2000) as unknown as number
+    // Run immediately once
+    setTimeout(runBackfill, 1000)
   }
 }
 

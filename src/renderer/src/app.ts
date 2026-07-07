@@ -33,6 +33,8 @@ import { ConsoleComponent } from './components/console/console'
 import { RealTerminalComponent } from './components/terminal/real-terminal'
 import { GraphView } from './components/graph/graph'
 import { TimelineComponent } from './components/timeline/timeline'
+import { IngestionModal } from "./knm/components/IngestionModal";
+import { SearchModal } from "./knm/components/SearchModal";
 import { themeManager } from './core/themeManager'
 import { ErrorHandler } from './utils/error-handler'
 import { notificationManager } from './components/notification/notification'
@@ -44,7 +46,7 @@ import { PreviewHandlers } from './handlers/previewHandlers'
 import { vaultService } from './services/vaultService'
 import { VaultPicker } from './components/vault-picker/vault-picker'
 import { WelcomePage } from './components/welcome-page/welcome-page'
-import { ragService } from './services/rag/ragService'
+import { ragService } from './knm/rag/ragService'
 import { securityService } from './services/security/securityService'
 import { updateApp } from './components/updateApp/updateRender'
 import { VaultHandler } from './handlers/VaultHandler'
@@ -84,6 +86,8 @@ class App {
   private pendingSettingsUpdate: number | null = null
   private welcomePage: WelcomePage
   private timeline: TimelineComponent
+  private ingestionModal: IngestionModal
+  private searchModal: SearchModal
 
   private vaultHandler: VaultHandler
   private fileOps: FileOperationHandler
@@ -112,6 +116,8 @@ class App {
     const graphHost = document.getElementById('graphHost')
     this.graphTabView = new GraphView(graphHost || document.body, false) // Tab instance
     this.timeline = new TimelineComponent('timelineHost')
+    this.ingestionModal = new IngestionModal()
+    this.searchModal = new SearchModal()
 
     this.viewOrchestrator = new ViewOrchestrator({
       editor: this.editor,
@@ -272,6 +278,8 @@ class App {
       void this.vaultHandler.openNote(id, path)
     }) as EventListener)
     window.addEventListener('toggle-documentation-modal', () => this.documentationModal.toggle())
+    window.addEventListener('open-ingestion-modal', () => this.ingestionModal.show())
+    window.addEventListener('open-search-modal', () => this.searchModal.show())
     window.addEventListener('knowledge-hub:insert-at-cursor', ((
       e: CustomEvent<{ content: string }>
     ) => {
@@ -926,9 +934,16 @@ class App {
         }
       }
     })
+    reg('Control+k', 'Global Hybrid Search', () => this.searchModal.show())
+    reg('Control+Shift+u', 'Import Data (Ingestion)', () => this.ingestionModal.show())
     reg('Control+Shift+p', 'Command Palette', () => this.fuzzyFinder.toggle('commands'))
     reg('Control+i', 'Toggle Right Sidebar', () => void this.viewOrchestrator.toggleRightSidebar())
     reg('Control+Alt+s', 'Open AI Configuration', () => this.aiSettingsModal.open())
+
+    window.addEventListener('open-ingestion-modal', () => {
+      this.ingestionModal.show()
+    })
+
     reg('Control+F5', 'Reload Window', () => window.location.reload())
     reg('Control+Shift+r', 'Reload vault', () => void this.reloadVault())
     reg('Control+Shift+v', 'Choose vault', () => void this.vaultHandler.chooseVault())
@@ -1418,6 +1433,18 @@ class App {
         label: 'AI: Re-index Vault',
         description: 'Update AI search index',
         handler: () => this.vaultHandler.backgroundIndexVault()
+      },
+      {
+        id: 'knm-ingestion',
+        label: 'KNM: Import Data',
+        description: 'Open the Data Ingestion Modal',
+        handler: () => this.ingestionModal.show()
+      },
+      {
+        id: 'knm-search',
+        label: 'KNM: Global Hybrid Search',
+        description: 'Open the Hybrid Search Modal',
+        handler: () => this.searchModal.show()
       },
       {
         id: 'toggle-sidebar',

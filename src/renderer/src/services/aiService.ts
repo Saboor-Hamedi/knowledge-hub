@@ -1,5 +1,5 @@
 import { state } from '../core/state'
-import { ragService } from './rag/ragService'
+import { ragService } from '../knm/rag/ragService'
 import { agentExecutor } from './agent/executor'
 import type { TreeItem } from '../core/types'
 import { aiProviderManager } from './ai/provider-manager'

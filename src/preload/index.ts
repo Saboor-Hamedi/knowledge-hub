@@ -129,6 +129,40 @@ type AppSettings = {
   }
 }
 
+type PgConfig = {
+  host?: string
+  port?: number
+  database?: string
+  user?: string
+  password?: string
+}
+
+type DatabaseStatus = {
+  connected: boolean
+  total_docs: number
+  total_chunks: number
+  by_type: Record<string, number>
+}
+
+type ExtractorStatus = {
+  watching: boolean
+  databaseConnected: boolean
+  total_docs: number
+  total_chunks: number
+  by_type: Record<string, number>
+}
+
+type SearchResult = {
+  chunk_id: string
+  document_id: string
+  chunk_index: number
+  content: string
+  vault_path: string
+  file_name: string
+  file_type: string
+  similarity: number
+}
+
 const api = {
   requestUpdate: (): void => {
     ipcRenderer.send('app:update')
@@ -260,7 +294,48 @@ const api = {
   getGitContentAtCommit: (filePath: string, hash: string): Promise<string> =>
     ipcRenderer.invoke('git:show-content', filePath, hash),
   getCommitDetails: (hash: string): Promise<Record<string, unknown>> =>
-    ipcRenderer.invoke('git:commit-details', hash)
+    ipcRenderer.invoke('git:commit-details', hash),
+
+  // Database
+  database: {
+    connect: (config?: PgConfig): Promise<{ success: boolean; message: string }> =>
+      ipcRenderer.invoke('database:connect', config),
+    disconnect: (): Promise<{ success: boolean }> => ipcRenderer.invoke('database:disconnect'),
+    getStatus: (): Promise<DatabaseStatus> => ipcRenderer.invoke('database:status'),
+    query: (sql: string, params?: unknown[]): Promise<{ success: boolean; rows?: unknown[]; error?: string }> =>
+      ipcRenderer.invoke('database:query', sql, params)
+  },
+
+  // Extractor
+  extractor: {
+    start: (vaultPath?: string): Promise<{ success: boolean; message: string }> =>
+      ipcRenderer.invoke('extractor:start', vaultPath),
+    stop: (): Promise<{ success: boolean }> => ipcRenderer.invoke('extractor:stop'),
+    extractFile: (filePath: string): Promise<{ success: boolean; chunkCount?: number; error?: string }> =>
+      ipcRenderer.invoke('extractor:extract', filePath),
+    reindex: (): Promise<{ success: boolean; processed?: number; failed?: number; message?: string }> =>
+      ipcRenderer.invoke('extractor:reindex'),
+    getStatus: (): Promise<ExtractorStatus> => ipcRenderer.invoke('extractor:status'),
+    search: (queryVector: number[], limit?: number): Promise<{ success: boolean; results?: SearchResult[]; error?: string }> =>
+      ipcRenderer.invoke('extractor:search', queryVector, limit),
+    hybridSearch: (keywordQuery: string, queryVector: number[], limit?: number): Promise<{ success: boolean; results?: SearchResult[]; error?: string }> =>
+      ipcRenderer.invoke('extractor:hybridSearch', keywordQuery, queryVector, limit),
+    getUnembeddedChunks: (limit?: number): Promise<{ success: boolean; chunks?: { id: string; content: string }[]; error?: string }> =>
+      ipcRenderer.invoke('extractor:getUnembeddedChunks', limit),
+    updateChunkEmbedding: (chunkId: string, embeddingVector: number[]): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('extractor:updateChunkEmbedding', chunkId, embeddingVector),
+    startBatchIngestion: (filePaths: string[]): Promise<{ success: boolean; message?: string }> =>
+      ipcRenderer.invoke('extractor:startBatchIngestion', filePaths),
+    cancelBatchIngestion: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('extractor:cancelBatchIngestion'),
+    getBatchStatus: (): Promise<{ isProcessing: boolean; percent: number; status: string; queue: string[] }> =>
+      ipcRenderer.invoke('extractor:getBatchStatus'),
+    onProgress: (callback: (percent: number, status: string) => void): (() => void) => {
+      const subscription = (_event: unknown, percent: number, status: string) => callback(percent, status)
+      ipcRenderer.on('extractor:progress', subscription)
+      return () => ipcRenderer.removeListener('extractor:progress', subscription)
+    }
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

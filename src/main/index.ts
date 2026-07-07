@@ -24,6 +24,8 @@ import {
   resetSettings,
   type Settings
 } from './settings'
+import { createPool, closePool, isConnected, runMigrationsSafe, queries } from './knm/database'
+import { documentExtractor } from './knm/extractor'
 import { registerTerminalHandlers, cleanupTerminals } from './modules/terminal'
 import {
   getGitStatus,
@@ -1021,6 +1023,175 @@ app.whenReady().then(async () => {
     return getCommitDetails(root, hash)
   })
 
+  // ----------------------------------------------------------------------
+  // Database IPC Handlers
+  // ----------------------------------------------------------------------
+  ipcMain.handle('database:connect', async (_event, dbConfig?: Record<string, unknown>) => {
+    try {
+      const settings = loadSettings()
+      const cfg = dbConfig || settings.database || {}
+      await closePool()
+      createPool({
+        host: cfg.host as string | undefined,
+        port: cfg.port as number | undefined,
+        database: cfg.database as string | undefined,
+        user: cfg.user as string | undefined,
+        password: cfg.password as string | undefined
+      })
+      await runMigrationsSafe()
+      return { success: true, message: 'Connected to PostgreSQL' }
+    } catch (err) {
+      return { success: false, message: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('database:disconnect', async () => {
+    try {
+      await closePool()
+      return { success: true }
+    } catch (err) {
+      return { success: false, message: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('database:status', async () => {
+    const connected = isConnected()
+    let stats = { total_docs: 0, total_chunks: 0, by_type: {} }
+    if (connected) {
+      try {
+        stats = await queries.getDocumentStats()
+      } catch {
+        // DB might not be migrated yet
+      }
+    }
+    return { connected, ...stats }
+  })
+
+  ipcMain.handle('database:query', async (_event, sql: string, params?: unknown[]) => {
+    try {
+      const { query } = await import('./knm/database')
+      const rows = await query(sql, params)
+      return { success: true, rows }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+
+  // ----------------------------------------------------------------------
+  // Extractor IPC Handlers
+  // ----------------------------------------------------------------------
+  ipcMain.handle('extractor:start', async (_event, vaultPath?: string) => {
+    try {
+      const settings = loadSettings()
+      const path = vaultPath || settings.vaultPath
+      if (!path) return { success: false, message: 'No vault path configured' }
+      await documentExtractor.watch(path)
+      return { success: true, message: 'Extractor watcher started' }
+    } catch (err) {
+      return { success: false, message: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('extractor:stop', async () => {
+    try {
+      await documentExtractor.stop()
+      return { success: true }
+    } catch (err) {
+      return { success: false, message: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('extractor:extract', async (_event, filePath: string) => {
+    return documentExtractor.extractFile(filePath)
+  })
+
+  ipcMain.handle('extractor:reindex', async () => {
+    try {
+      const result = await documentExtractor.reindexAll()
+      return { success: true, ...result }
+    } catch (err) {
+      return { success: false, message: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('extractor:startBatchIngestion', async (event, filePaths: string[]) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      return await documentExtractor.startBatchIngestion(filePaths, (percent, status) => {
+        if (win) {
+          win.webContents.send('extractor:progress', percent, status)
+        }
+      })
+    } catch (err) {
+      return { success: false, message: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('extractor:cancelBatchIngestion', async () => {
+    documentExtractor.cancelBatchIngestion()
+    return { success: true }
+  })
+
+  ipcMain.handle('extractor:getBatchStatus', async () => {
+    return documentExtractor.getBatchStatus()
+  })
+
+  ipcMain.handle('extractor:status', async () => {
+    const connected = isConnected()
+    let stats = { total_docs: 0, total_chunks: 0, by_type: {} }
+    if (connected) {
+      try {
+        stats = await queries.getDocumentStats()
+      } catch {
+        // not migrated yet
+      }
+    }
+    return {
+      watching: !!documentExtractor['watcher'],
+      databaseConnected: connected,
+      ...stats
+    }
+  })
+
+  ipcMain.handle('extractor:search', async (_event, queryVector: number[], limit: number = 10) => {
+    try {
+      const embedding = new Float32Array(queryVector)
+      const results = await queries.searchChunks(embedding, limit)
+      return { success: true, results }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('extractor:hybridSearch', async (_event, keywordQuery: string, queryVector: number[], limit: number = 10) => {
+    try {
+      const embedding = new Float32Array(queryVector)
+      const results = await queries.hybridSearchChunks(keywordQuery, embedding, limit)
+      return { success: true, results }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('extractor:getUnembeddedChunks', async (_event, limit: number = 50) => {
+    try {
+      const chunks = await queries.getUnembeddedChunks(limit)
+      return { success: true, chunks }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('extractor:updateChunkEmbedding', async (_event, chunkId: string, embeddingVector: number[]) => {
+    try {
+      const embedding = new Float32Array(embeddingVector)
+      await queries.updateChunkEmbedding(chunkId, embedding)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+
   ipcMain.handle('system:getUsername', () => {
     try {
       return userInfo().username
@@ -1035,6 +1206,26 @@ app.whenReady().then(async () => {
     await getOrCreateVaultManager(savedPath)
   } catch (err) {
     console.error('Failed to initialize vault:', err)
+  }
+
+  // Auto-connect to PostgreSQL if configured
+  const settings = loadSettings()
+  if (settings.database?.autoConnect && settings.database?.host) {
+    console.log('[Main] Auto-connecting to PostgreSQL...')
+    createPool({
+      host: settings.database.host,
+      port: settings.database.port,
+      database: settings.database.database,
+      user: settings.database.user,
+      password: settings.database.password
+    })
+    await runMigrationsSafe()
+
+    // Auto-start extractor watcher if enabled
+    if (settings.extractor?.enabled !== false) {
+      const vaultPath = resolveVaultPath()
+      await documentExtractor.watch(vaultPath)
+    }
   }
 
   ipcMain.on('open-external-url', (_event, url: string) => {
@@ -1063,4 +1254,6 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   // Ensure terminals are cleaned up
   cleanupTerminals()
+  documentExtractor.stop().catch(() => {})
+  closePool().catch(() => {})
 })

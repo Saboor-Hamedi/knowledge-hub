@@ -4,7 +4,7 @@ import { sortNotes } from '../utils/helpers'
 import { sortTreeRecursive } from '../utils/tree-utils'
 import { vaultService } from '../services/vaultService'
 import { tabService } from '../services/tabService'
-import { ragService } from '../services/rag/ragService'
+import { ragService } from '../knm/rag/ragService'
 import { aiStatusManager } from '../core/aiStatusManager'
 import { notificationManager } from '../components/notification/notification'
 

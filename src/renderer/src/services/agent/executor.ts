@@ -1,5 +1,5 @@
 import { state } from '../../core/state'
-import { ragService } from '../rag/ragService'
+import { ragService } from '../../knm/rag/ragService'
 import { tabService } from '../tabService'
 import type { NoteMeta, NotePayload, TreeItem } from '../../core/types'
 

@@ -3,7 +3,7 @@ import type { NotePayload } from '../core/types'
 import { noteService } from '../services/noteService'
 import { modalManager } from '../components/modal/modal'
 import { securityService } from '../services/security/securityService'
-import { ragService } from '../services/rag/ragService'
+import { ragService } from '../knm/rag/ragService'
 import { tabService } from '../services/tabService'
 import { gitService } from '../services/git/gitService'
 

@@ -23,7 +23,8 @@ import {
   renderSearchSection,
   renderTabSection,
   renderSidebarSection,
-  renderActivityBarSection
+  renderActivityBarSection,
+  renderDatabaseSection
 } from './settings-sections-renderer'
 import './settings-view.css'
 
@@ -72,6 +73,7 @@ export class SettingsView {
           ${renderAppearanceSection(this.activeSection)}
           ${renderBehaviorSection(this.activeSection)}
           ${renderAISection(this.activeSection)}
+          ${renderDatabaseSection(this.activeSection)}
           ${renderVaultSection(this.activeSection)}
           ${renderSyncSection(this.activeSection)}
           ${renderShortcutsSection(this.activeSection)}

@@ -5,9 +5,7 @@ import type { RagWorkerJob } from './rag.worker.types'
 if (env) {
   ;(env as any).allowLocalModels = false
   ;(env as any).allowRemoteModels = true
-  ;(env as any).useBrowserCache = false
-  ;(env as any).remoteHost = 'https://huggingface.co'
-  ;(env as any).remotePrefix = 'models/'
+  ;(env as any).useBrowserCache = true // MUST BE TRUE to prevent downloading 100MB on every refresh
 }
 
 const db = new VectorDB()
@@ -28,7 +26,7 @@ async function initModel(): Promise<void> {
   initPromise = (async () => {
     try {
       console.log('[RagWorker] Pipeline loading...')
-      extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+      extractor = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
         quantized: false
       })
       console.log('[RagWorker] Pipeline ready')

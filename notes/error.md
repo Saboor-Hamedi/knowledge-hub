@@ -1,22 +1,10 @@
-# Fixing Monaco Autocomplete Clutter
+ ERROR  [vite:esbuild] Transform failed with 1 error:
+B:/electron/knowledgeHub/src/main/knm/extractor/chunker.ts:44:56: ERROR: Expected ";" but found ")"
+file: B:/electron/knowledgeHub/src/main/knm/extractor/chunker.ts:44:56
 
-If you see extra text appearing directly under the note titles in the autocomplete dropdown (labels like "WikiLink", "Mention", or folder paths), it is caused by the `detail` and `documentation` fields in Monaco's `CompletionItem`.
-npm install --legacy-peer-deps --ignore-scripts
-
-## How to Fix
-
-In the `registerCompletionItemProvider` (found in `wikilink.ts`), ensure that both `detail` and `documentation` are set to empty strings:
-
-```typescript
-return {
-  label: name,
-  kind: monaco.languages.CompletionItemKind.File,
-  insertText: name,
-  detail: '', // Must be empty to hide extra help text
-  documentation: '', // Must be empty to hide description
-  range: range
-  // ... other properties
-}
-```
-
-This prevents Monaco from injecting "helpful" but cluttered information into the UI.
+Expected ";" but found ")"
+42 |        flushCurrent()
+43 |        // Split large paragraph by sentences
+44 |        const sentences = para.match(/[^.!?\n]+[.!?]*\s*/g) || [para]
+   |                                                          ^
+45 |        let sentBuf: string[] = 

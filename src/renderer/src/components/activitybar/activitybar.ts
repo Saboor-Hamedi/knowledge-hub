@@ -150,6 +150,15 @@ export class ActivityBar {
         <button class="activitybar__item${this.updateState !== 'idle' ? ' has-notification' : ''}" data-view="update" data-tooltip="Update">
           <span class="activitybar__icon">${updateIcon}</span>
         </button>
+        <button class="activitybar__item" data-view="import" data-tooltip="Import Data (Ctrl+Shift+U)">
+          <span class="activitybar__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </span>
+        </button>
         <button class="activitybar__item" data-view="documentation" data-tooltip="Documentation (Ctrl+Shift+\\)">
           <span class="activitybar__icon">${libraryIcon}</span>
         </button>
@@ -248,6 +257,7 @@ export class ActivityBar {
         | 'update'
         | 'documentation'
         | 'lock'
+        | 'import'
       if (!view) return
 
       if (view === 'update') {
@@ -262,9 +272,13 @@ export class ActivityBar {
       }
 
       // Toggle for modals as well
-      if (view === 'theme' || view === 'documentation' || view === 'lock') {
+      if (view === 'theme' || view === 'documentation' || view === 'lock' || view === 'import') {
         if (view === 'lock') {
           void securityService.promptAndLock()
+          return
+        }
+        if (view === 'import') {
+          window.dispatchEvent(new Event('open-ingestion-modal'))
           return
         }
 

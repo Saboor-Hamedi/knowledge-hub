@@ -26,7 +26,8 @@ import {
   Activity,
   Search,
   X,
-  Cpu
+  Cpu,
+  Database
 } from 'lucide'
 import { createLucideIcon, shorten } from './settings-utils'
 import { renderShortcutItems } from '../../utils/shortcutUtils'
@@ -614,6 +615,62 @@ export function renderSearchSection(activeSection: string): string {
   `
 }
 
+export function renderDatabaseSection(activeSection: string): string {
+  if (activeSection !== 'database') return ''
+
+  const dbSettings = state.settings?.database || {}
+  
+  return `
+    <div class="settings-view__section is-active" data-section="database">
+      ${renderSectionHeader('Database Configuration')}
+      <div class="settings-view__group">
+        ${renderRow({
+          icon: Database,
+          label: 'Host',
+          hint: 'Database server host address.',
+          actionHtml: `<input type="text" class="settings-input" data-setting="database.host" value="${dbSettings.host || 'localhost'}" placeholder="localhost" spellcheck="false" />`,
+          searchData: 'database host connection'
+        })}
+        ${renderRow({
+          icon: Zap,
+          label: 'Port',
+          hint: 'Database server port.',
+          actionHtml: `<input type="number" class="settings-input" data-setting="database.port" value="${dbSettings.port || 5432}" placeholder="5432" spellcheck="false" style="width: 100px" />`,
+          searchData: 'database port connection'
+        })}
+        ${renderRow({
+          icon: Database,
+          label: 'Database Name',
+          hint: 'Name of the Postgres database.',
+          actionHtml: `<input type="text" class="settings-input" data-setting="database.database" value="${dbSettings.database || 'knowledgehub'}" placeholder="knowledgehub" spellcheck="false" />`,
+          searchData: 'database name connection'
+        })}
+        ${renderRow({
+          icon: Key,
+          label: 'User',
+          hint: 'Database username.',
+          actionHtml: `<input type="text" class="settings-input" data-setting="database.user" value="${dbSettings.user || 'postgres'}" placeholder="postgres" spellcheck="false" />`,
+          searchData: 'database user connection'
+        })}
+        ${renderRow({
+          icon: Key,
+          label: 'Password',
+          hint: 'Database password.',
+          actionHtml: `<input type="password" class="settings-input" data-setting="database.password" value="${dbSettings.password || ''}" placeholder="••••••" spellcheck="false" />`,
+          searchData: 'database password connection'
+        })}
+        ${renderRow({
+          icon: Zap,
+          label: 'Auto Connect',
+          hint: 'Connect to database automatically on startup.',
+          actionHtml: renderToggle('database.autoConnect', !!dbSettings.autoConnect),
+          searchData: 'database auto connect connection'
+        })}
+      </div>
+    </div>
+  `
+}
+
 export function renderTabSection(activeSection: string): string {
   const s = state.settings
   return `
@@ -857,6 +914,9 @@ export function renderSidebar(activeSection: string, searchQuery: string): strin
       </button>
       <button class="settings-view__sidebar-item ${activeSection === 'ai' ? 'is-active' : ''}" data-section-tab="ai">
         ${codicons.sparkles} AI
+      </button>
+      <button class="settings-view__sidebar-item ${activeSection === 'database' ? 'is-active' : ''}" data-section-tab="database">
+        ${createLucideIcon(Database, 16)} Database
       </button>
       <button class="settings-view__sidebar-item ${activeSection === 'vault' ? 'is-active' : ''}" data-section-tab="vault">
         ${codicons.folderRoot} Vault

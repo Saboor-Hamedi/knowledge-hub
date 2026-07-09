@@ -33,8 +33,7 @@ import { ConsoleComponent } from './components/console/console'
 import { RealTerminalComponent } from './components/terminal/real-terminal'
 import { GraphView } from './components/graph/graph'
 import { TimelineComponent } from './components/timeline/timeline'
-import { SearchModal } from './knm/components/SearchModal'
-import { SearchModal } from "./knm/components/SearchModal";
+import { KMModal } from './knm/components/KMModal'
 import { themeManager } from './core/themeManager'
 import { ErrorHandler } from './utils/error-handler'
 import { notificationManager } from './components/notification/notification'
@@ -86,7 +85,7 @@ class App {
   private pendingSettingsUpdate: number | null = null
   private welcomePage: WelcomePage
   private timeline: TimelineComponent
-  private searchModal: SearchModal
+  private searchModal: KMModal
 
   private vaultHandler: VaultHandler
   private fileOps: FileOperationHandler
@@ -116,7 +115,7 @@ class App {
     this.graphTabView = new GraphView(graphHost || document.body, false) // Tab instance
     this.timeline = new TimelineComponent('timelineHost')
 
-    this.searchModal = new SearchModal()
+    this.searchModal = new KMModal()
 
     this.viewOrchestrator = new ViewOrchestrator({
       editor: this.editor,

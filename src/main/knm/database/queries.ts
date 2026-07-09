@@ -88,6 +88,15 @@ export async function getAllDocuments(): Promise<DocumentRow[]> {
   return query<DocumentRow>('SELECT * FROM documents ORDER BY updated_at DESC')
 }
 
+export async function getAllDocumentIds(): Promise<{ id: string }[]> {
+  return query<{ id: string }>('SELECT id FROM documents')
+}
+
+export async function deleteDocumentsBatch(ids: string[]): Promise<void> {
+  if (!ids.length) return
+  await query('DELETE FROM documents WHERE id = ANY($1::uuid[])', [ids])
+}
+
 export async function deleteDocumentByPath(vaultPath: string): Promise<void> {
   await query('DELETE FROM documents WHERE vault_path = $1', [vaultPath])
 }

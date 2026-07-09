@@ -302,6 +302,13 @@ const api = {
       ipcRenderer.invoke('database:connect', config),
     disconnect: (): Promise<{ success: boolean }> => ipcRenderer.invoke('database:disconnect'),
     getStatus: (): Promise<DatabaseStatus> => ipcRenderer.invoke('database:status'),
+    truncate: (): Promise<{ success: boolean; message: string }> => ipcRenderer.invoke('database:truncate'),
+    onTruncateProgress: (callback: (percent: number, status: string) => void): (() => void) => {
+      const subscription = (_event: unknown, percent: number, status: string): void =>
+        callback(percent, status)
+      ipcRenderer.on('database:truncate-progress', subscription)
+      return () => ipcRenderer.removeListener('database:truncate-progress', subscription)
+    },
     query: (sql: string, params?: unknown[]): Promise<{ success: boolean; rows?: unknown[]; error?: string }> =>
       ipcRenderer.invoke('database:query', sql, params)
   },

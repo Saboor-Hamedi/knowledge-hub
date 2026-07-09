@@ -1,8 +1,8 @@
-import './search-modal.css'
+import './km-modal.css'
 import { formatMarkdown } from '../../utils/markdown'
 import { aiProviderManager } from '../../services/ai/provider-manager'
 
-export class SearchModal {
+export class KMModal {
   private container: HTMLElement
   private overlay: HTMLElement
   private removeProgressCb?: () => void
@@ -81,11 +81,15 @@ export class SearchModal {
         <div class="km-sidebar-menu">
           <div class="km-sidebar-item active" data-view="search">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            Search
+            KMSearch
           </div>
           <div class="km-sidebar-item" data-view="upload">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Upload Documents
+            KMUpload
+          </div>
+          <div class="km-sidebar-item" data-view="properties">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            KMProperties
           </div>
         </div>
       </div>
@@ -158,6 +162,32 @@ export class SearchModal {
             <button class="btn btn-danger" id="ingestion-cancel-btn">Cancel Processing</button>
           </div>
         </div>
+
+        <!-- PROPERTIES VIEW -->
+        <div class="km-view km-flex-col" id="view-properties">
+          <div class="km-properties-body">
+            <div class="km-stats-card">
+              <h4>Database Statistics</h4>
+              <div class="km-stats-grid" id="km-stats-grid">
+                <!-- populated dynamically -->
+                <div class="km-stat-item">
+                  <span class="km-stat-label">Total Documents</span>
+                  <span class="km-stat-value">Loading...</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="km-danger-zone">
+              <h4>Danger Zone</h4>
+              <p>Truncate the database in batches. This will remove all ingested documents and vector embeddings.</p>
+              <button class="btn btn-danger" id="km-truncate-btn">Truncate Database</button>
+              <div id="km-truncate-progress" style="display:none; margin-top: 12px; color: var(--text-soft);">
+                <div class="progress-bar-bg"><div class="progress-bar-fill" id="truncate-fill"></div></div>
+                <div id="truncate-text" style="font-size:12px; margin-top:4px;">Preparing...</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     `
   }
@@ -186,6 +216,44 @@ export class SearchModal {
     if (viewId === 'search') {
       const input = this.container.querySelector('#search-input') as HTMLInputElement
       if (input) input.focus()
+    } else if (viewId === 'properties') {
+      this.loadProperties()
+    }
+  }
+
+  private async loadProperties(): Promise<void> {
+    const grid = this.container.querySelector('#km-stats-grid')
+    if (!grid) return
+    grid.innerHTML = '<div class="km-stat-item"><span class="km-stat-value">Loading...</span></div>'
+    
+    try {
+      const status = await window.api.database.getStatus()
+      if (!status.connected) {
+        grid.innerHTML = '<div class="km-stat-item"><span class="km-stat-value" style="color:var(--danger);">Not connected to database</span></div>'
+        return
+      }
+
+      const typesHtml = Object.entries(status.by_type || {})
+        .map(([type, count]) => `
+          <div class="km-stat-item">
+            <span class="km-stat-label">${type} Files</span>
+            <span class="km-stat-value">${count}</span>
+          </div>
+        `).join('')
+
+      grid.innerHTML = `
+        <div class="km-stat-item">
+          <span class="km-stat-label">Total Documents</span>
+          <span class="km-stat-value">${status.total_docs || 0}</span>
+        </div>
+        <div class="km-stat-item">
+          <span class="km-stat-label">Total Vector Chunks</span>
+          <span class="km-stat-value">${status.total_chunks || 0}</span>
+        </div>
+        ${typesHtml}
+      `
+    } catch (err) {
+      grid.innerHTML = '<div class="km-stat-item"><span class="km-stat-value" style="color:var(--danger);">Failed to load stats</span></div>'
     }
   }
 
@@ -210,10 +278,54 @@ export class SearchModal {
     sidebarItems.forEach(item => {
       item.addEventListener('click', () => {
         const viewId = item.getAttribute('data-view')
-        const title = item.textContent?.trim() || 'Search'
+        const title = item.textContent?.trim() || 'Knowledge Hub'
         if (viewId) this.switchView(viewId, title)
       })
     })
+
+    // --- PROPERTIES LISTENERS ---
+    const truncateBtn = this.container.querySelector('#km-truncate-btn') as HTMLButtonElement
+    const truncateProgress = this.container.querySelector('#km-truncate-progress') as HTMLElement
+    const truncateFill = this.container.querySelector('#truncate-fill') as HTMLElement
+    const truncateText = this.container.querySelector('#truncate-text') as HTMLElement
+
+    if (truncateBtn) {
+      truncateBtn.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to truncate the entire knowledge database? This action cannot be undone.')) return
+        
+        truncateBtn.disabled = true
+        truncateProgress.style.display = 'block'
+        truncateFill.style.width = '0%'
+        truncateText.textContent = 'Preparing...'
+
+        const unsub = window.api.database.onTruncateProgress((percent, status) => {
+          truncateFill.style.width = \`\${percent}%\`
+          truncateText.textContent = status
+        })
+
+        try {
+          const res = await window.api.database.truncate()
+          if (res.success) {
+            truncateText.textContent = 'Truncate complete!'
+            truncateFill.style.background = '#4caf50'
+            setTimeout(() => {
+              truncateProgress.style.display = 'none'
+              truncateBtn.disabled = false
+              truncateFill.style.background = 'var(--primary)'
+              this.loadProperties()
+            }, 2000)
+          } else {
+            alert('Failed to truncate: ' + res.message)
+            truncateBtn.disabled = false
+          }
+        } catch (e) {
+          alert('Error truncating: ' + (e as Error).message)
+          truncateBtn.disabled = false
+        } finally {
+          unsub()
+        }
+      })
+    }
 
     // --- SEARCH LISTENERS ---
     const input = this.container.querySelector('#search-input') as HTMLTextAreaElement

@@ -1067,6 +1067,40 @@ app.whenReady().then(async () => {
     return { connected, ...stats }
   })
 
+  ipcMain.handle('database:truncate', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const notifyProgress = (percent: number, status: string) => {
+        if (win) win.webContents.send('database:truncate-progress', percent, status)
+      }
+
+      notifyProgress(0, 'Fetching documents...')
+      const docRows = await queries.getAllDocumentIds()
+      
+      if (!docRows || docRows.length === 0) {
+        notifyProgress(100, 'Database is already empty')
+        return { success: true, message: 'Database is already empty' }
+      }
+
+      const total = docRows.length
+      let deleted = 0
+      const batchSize = 500
+
+      for (let i = 0; i < total; i += batchSize) {
+        const batch = docRows.slice(i, i + batchSize).map(r => r.id)
+        notifyProgress(Math.round((deleted / total) * 100), `Deleting documents... (${deleted}/${total})`)
+        await queries.deleteDocumentsBatch(batch)
+        deleted += batch.length
+      }
+
+      notifyProgress(100, `Truncated ${deleted} documents`)
+      return { success: true, message: `Successfully deleted ${deleted} documents` }
+    } catch (err) {
+      console.error('Truncate error:', err)
+      return { success: false, message: (err as Error).message }
+    }
+  })
+
   ipcMain.handle('database:query', async (_event, sql: string, params?: unknown[]) => {
     try {
       const { query } = await import('./knm/database')

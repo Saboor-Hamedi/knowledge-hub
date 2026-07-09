@@ -262,7 +262,7 @@ export class AISettingsModal {
       models.forEach((model) => {
         const option = document.createElement('option')
         option.value = model
-        option.textContent = `modal:${model}`
+        option.textContent = model
         if (model === this.currentSettings.aiModel) option.selected = true
         select.appendChild(option)
       })
@@ -289,10 +289,17 @@ export class AISettingsModal {
       models.forEach((model) => {
         const option = document.createElement('option')
         option.value = model
-        option.textContent = `modal:${model}`
+        option.textContent = model
         if (model === this.currentSettings.aiModel) option.selected = true
         select.appendChild(option)
       })
+      
+      // Auto-select first installed model if the current one is invalid/empty
+      if (models.length > 0 && (!this.currentSettings.aiModel || !models.includes(this.currentSettings.aiModel))) {
+        this.currentSettings.aiModel = models[0]
+        select.value = models[0]
+        this.updateSetting('aiModel', models[0])
+      }
     } catch (err) {
       select.innerHTML = '<option value="">Error fetching models</option>'
     } finally {

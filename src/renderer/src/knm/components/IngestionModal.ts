@@ -64,38 +64,44 @@ export class IngestionModal {
     this.container.innerHTML = `
       <div class="ingestion-modal__header">
         <div class="ingestion-modal__title-group">
-          <h3 class="ingestion-modal__title">Import Data</h3>
+          <h3 class="ingestion-modal__title">Import Documents</h3>
         </div>
         <div class="ingestion-modal__actions">
-          <button class="ingestion-modal__close wh-btn">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M10.707 2.707L9.293 1.293 6 4.586 2.707 1.293 1.293 2.707 4.586 6l-3.293 3.293 1.414 1.414L6 7.414l3.293 3.293 1.414-1.414L7.414 6l3.293-3.293z"/>
+          <button class="ingestion-modal__close wh-close">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <path d="M11 1L1 11M1 1l10 10"/>
             </svg>
           </button>
         </div>
       </div>
       <div class="ingestion-body">
         <div class="ingestion-dropzone" id="ingestion-dropzone">
-          <p>Drag and drop PDF, DOCX, XLSX, CSV, or TXT files here to ingest</p>
-          <input type="file" id="ingestion-file-input" multiple style="display: none;" accept=".pdf,.docx,.xlsx,.csv,.txt" />
-          <button class="btn btn-primary" id="ingestion-browse-btn">Browse Files</button>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p>Drop files here to ingest</p>
+          <span class="drop-hint">PDF, DOCX, XLSX, CSV, TXT</span>
+          <input type="file" id="ingestion-file-input" multiple style="display:none;" accept=".pdf,.docx,.xlsx,.csv,.txt,.md" />
+          <button class="km-browse-btn" id="ingestion-browse-btn">Browse Files</button>
         </div>
         <div class="ingestion-progress-container" style="display: none;">
           <div class="ingestion-progress-header">
-            <h3>Processing Files</h3>
+            <h3>Processing</h3>
             <div class="progress-bar-bg">
               <div class="progress-bar-fill" id="ingestion-progress-fill"></div>
             </div>
-            <p id="ingestion-progress-text">0% Complete</p>
+            <p id="ingestion-progress-text">Starting…</p>
           </div>
           <div class="ingestion-file-list-wrapper">
             <ul id="ingestion-file-list" class="ingestion-file-list"></ul>
           </div>
-          <div class="ingestion-modal__footer">
-            <button class="btn btn-secondary" id="ingestion-add-more-btn" style="margin-right: 8px;">Add More Files</button>
-            <button class="btn btn-danger" id="ingestion-cancel-btn">Cancel Processing</button>
-          </div>
         </div>
+      </div>
+      <div class="ingestion-modal__footer" id="ingestion-footer" style="display:none;">
+        <button class="btn btn-secondary" id="ingestion-add-more-btn">Add More</button>
+        <button class="btn btn-danger" id="ingestion-cancel-btn">Cancel</button>
       </div>
     `
   }
@@ -147,11 +153,12 @@ export class IngestionModal {
   private handleFiles(files: File[]): void {
     const dropzone = this.container.querySelector('#ingestion-dropzone') as HTMLElement
     const progressContainer = this.container.querySelector('.ingestion-progress-container') as HTMLElement
+    const footer = this.container.querySelector('#ingestion-footer') as HTMLElement
     const fileList = this.container.querySelector('#ingestion-file-list') as HTMLElement
     const cancelBtn = this.container.querySelector('#ingestion-cancel-btn') as HTMLElement
 
     // If we were just in a success state, reset the UI first
-    if (cancelBtn && cancelBtn.textContent === 'Close') {
+    if (cancelBtn && cancelBtn.textContent === 'Done') {
       this.resetUI()
     }
 
@@ -159,7 +166,8 @@ export class IngestionModal {
     
     dropzone.style.display = 'none'
     progressContainer.style.display = 'flex'
-    
+    if (footer) footer.style.display = 'flex'
+
     if (!isAlreadyProcessing) {
       fileList.innerHTML = ''
     }

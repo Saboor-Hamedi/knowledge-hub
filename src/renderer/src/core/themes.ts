@@ -26,6 +26,10 @@ export type ThemeColors = {
   '--syntax-number': string
   '--syntax-builtin': string
   '--syntax-type': string
+  '--activity-bg'?: string
+  '--sidebar-bg'?: string
+  '--titlebar-bg'?: string
+  '--statusbar-bg'?: string
 }
 
 export type Theme = {
@@ -59,14 +63,14 @@ function withSyntax(colors: Record<string, string>): ThemeColors {
 export const themes: Record<string, Theme> = {
   dark: {
     id: 'dark',
-    name: 'Hub Dark (Default)',
+    name: 'Dark',
     colors: withSyntax({
-      '--bg': '#0a0b10',
-      '--bg-accent': '#0f1117',
-      '--panel': '#12141c',
-      '--panel-strong': '#1a1d27',
-      '--border': '#232735',
-      '--border-subtle': 'rgba(255, 255, 255, 0.04)',
+      '--bg': '#18181b',
+      '--bg-accent': '#27272a',
+      '--panel': '#27272a',
+      '--panel-strong': '#18181b',
+      '--border': '#3f3f46',
+      '--border-subtle': 'rgba(255, 255, 255, 0.08)',
       '--muted': '#626a84',
       '--text': '#e2e4e9',
       '--text-strong': '#ffffff',
@@ -305,12 +309,12 @@ export const themes: Record<string, Theme> = {
     id: 'cyberpunk2077',
     name: 'Cyberpunk 2077',
     colors: withSyntax({
-      '--bg': '#000000',
-      '--bg-accent': '#000000',
-      '--panel': '#000000',
-      '--panel-strong': '#0d0d0d',
-      '--border': '#f3e600',
-      '--border-subtle': 'rgba(243, 230, 0, 0.15)',
+      '--bg': '#050511',
+      '--bg-accent': '#0a0a1a',
+      '--panel': '#0a0a1a',
+      '--panel-strong': '#101020',
+      '--border': '#222233',
+      '--border-subtle': 'rgba(243, 230, 0, 0.1)',
       '--muted': '#7a7a7a',
       '--text': '#00f0ff',
       '--text-strong': '#ffffff',
@@ -322,10 +326,10 @@ export const themes: Record<string, Theme> = {
       '--status': '#00f0ff',
       '--hover': 'rgba(0, 240, 255, 0.15)',
       '--selection': '#00f0ff40',
-      '--glass-bg': 'rgba(0, 0, 0, 0.9)',
-      '--glass-border': 'rgba(243, 230, 0, 0.3)',
-      '--shadow-subtle': '0 0 10px rgba(243, 230, 0, 0.2)',
-      '--shadow-strong': '0 0 30px rgba(0, 240, 255, 0.2)'
+      '--glass-bg': 'rgba(5, 5, 17, 0.9)',
+      '--glass-border': 'rgba(34, 34, 51, 0.5)',
+      '--shadow-subtle': '0 0 10px rgba(0, 0, 0, 0.2)',
+      '--shadow-strong': '0 0 30px rgba(0, 240, 255, 0.1)'
     })
   },
   pitchBlack: {
@@ -359,12 +363,12 @@ export const themes: Record<string, Theme> = {
     id: 'deepdark',
     name: 'Deepdark Material',
     colors: withSyntax({
-      '--bg': '#111111',
-      '--bg-accent': '#151515',
-      '--panel': '#111111',
-      '--panel-strong': '#1a1a1a',
-      '--border': '#252525',
-      '--border-subtle': 'rgba(0, 229, 255, 0.05)',
+      '--bg': '#18181b',
+      '--bg-accent': '#27272a',
+      '--panel': '#27272a',
+      '--panel-strong': '#18181b',
+      '--border': '#3f3f46',
+      '--border-subtle': 'rgba(255, 255, 255, 0.08)',
       '--muted': '#555555',
       '--text': '#e0e0e0',
       '--text-strong': '#ffffff',
@@ -596,6 +600,118 @@ export const themes: Record<string, Theme> = {
       '--glass-border': 'rgba(130, 170, 255, 0.15)',
       '--shadow-subtle': '0 5px 10px rgba(0,0,0,0.3)',
       '--shadow-strong': '0 15px 35px rgba(0,0,0,0.5)'
+    })
+  },
+  ubuntuYaru: {
+    id: 'ubuntuYaru',
+    name: 'Ubuntu Yaru',
+    colors: withSyntax({
+      '--bg': '#2C001E',
+      '--bg-accent': '#3D0029',
+      '--panel': '#2C001E',
+      '--panel-strong': '#1C0013',
+      '--border': '#4c4c4c',
+      '--border-subtle': 'rgba(233, 84, 32, 0.15)',
+      '--muted': '#888888',
+      '--text': '#fcfcfc',
+      '--text-strong': '#ffffff',
+      '--text-soft': '#d3d3d3',
+      '--text-muted': '#888888',
+      '--primary': '#E95420',
+      '--primary-strong': '#FF7A49',
+      '--danger': '#c7162b',
+      '--status': '#E95420',
+      '--hover': 'rgba(233, 84, 32, 0.15)',
+      '--selection': 'rgba(233, 84, 32, 0.3)',
+      '--glass-bg': 'rgba(44, 0, 30, 0.9)',
+      '--glass-border': 'rgba(233, 84, 32, 0.2)',
+      '--shadow-subtle': '0 2px 5px rgba(0,0,0,0.2)',
+      '--shadow-strong': '0 8px 16px rgba(0,0,0,0.4)',
+      '--activity-bg': '#2C001E',
+      '--sidebar-bg': '#2C001E',
+      '--titlebar-bg': '#2C001E',
+      '--statusbar-bg': '#2C001E'
+    })
+  },
+  popOS: {
+    id: 'popOS',
+    name: 'Pop!_OS',
+    colors: withSyntax({
+      '--bg': '#333130',
+      '--bg-accent': '#262423',
+      '--panel': '#2a2827',
+      '--panel-strong': '#201e1d',
+      '--border': '#484544',
+      '--border-subtle': 'rgba(72, 185, 199, 0.1)',
+      '--muted': '#898685',
+      '--text': '#fdfaf8',
+      '--text-strong': '#ffffff',
+      '--text-soft': '#d9d6d5',
+      '--text-muted': '#898685',
+      '--primary': '#48b9c7',
+      '--primary-strong': '#fbc02d',
+      '--danger': '#e26a6a',
+      '--status': '#48b9c7',
+      '--hover': 'rgba(72, 185, 199, 0.15)',
+      '--selection': 'rgba(72, 185, 199, 0.25)',
+      '--glass-bg': 'rgba(38, 36, 35, 0.85)',
+      '--glass-border': 'rgba(72, 185, 199, 0.2)',
+      '--shadow-subtle': '0 4px 6px rgba(0,0,0,0.15)',
+      '--shadow-strong': '0 12px 24px rgba(0,0,0,0.3)'
+    })
+  },
+  catppuccinMocha: {
+    id: 'catppuccinMocha',
+    name: 'Catppuccin Mocha',
+    colors: withSyntax({
+      '--bg': '#1e1e2e',
+      '--bg-accent': '#181825',
+      '--panel': '#181825',
+      '--panel-strong': '#11111b',
+      '--border': '#313244',
+      '--border-subtle': 'rgba(137, 180, 250, 0.1)',
+      '--muted': '#6c7086',
+      '--text': '#cdd6f4',
+      '--text-strong': '#ffffff',
+      '--text-soft': '#bac2de',
+      '--text-muted': '#7f849c',
+      '--primary': '#cba6f7',
+      '--primary-strong': '#89b4fa',
+      '--danger': '#f38ba8',
+      '--status': '#a6e3a1',
+      '--hover': 'rgba(203, 166, 247, 0.15)',
+      '--selection': 'rgba(137, 180, 250, 0.25)',
+      '--glass-bg': 'rgba(30, 30, 46, 0.85)',
+      '--glass-border': 'rgba(203, 166, 247, 0.15)',
+      '--shadow-subtle': '0 2px 4px rgba(0,0,0,0.2)',
+      '--shadow-strong': '0 8px 16px rgba(0,0,0,0.4)'
+    })
+  },
+  tokyoNight: {
+    id: 'tokyoNight',
+    name: 'Tokyo Night',
+    colors: withSyntax({
+      '--bg': '#1a1b26',
+      '--bg-accent': '#16161e',
+      '--panel': '#24283b',
+      '--panel-strong': '#1a1b26',
+      '--border': '#414868',
+      '--border-subtle': 'rgba(122, 162, 247, 0.1)',
+      '--muted': '#565f89',
+      '--text': '#a9b1d6',
+      '--text-strong': '#c0caf5',
+      '--text-soft': '#9aa5ce',
+      '--text-muted': '#565f89',
+      '--primary': '#7aa2f7',
+      '--primary-strong': '#89ddff',
+      '--danger': '#f7768e',
+      '--status': '#bb9af7',
+      '--hover': 'rgba(122, 162, 247, 0.15)',
+      '--selection': 'rgba(122, 162, 247, 0.3)',
+      '--glass-bg': 'rgba(26, 27, 38, 0.8)',
+      '--glass-border': 'rgba(65, 72, 104, 0.5)',
+      '--shadow-subtle': '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+      '--shadow-strong': '0 10px 15px -3px rgba(0, 0, 0, 0.25)'
     })
   }
 }

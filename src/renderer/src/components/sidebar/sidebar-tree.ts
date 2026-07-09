@@ -687,10 +687,10 @@ export class SidebarTree {
   }
 
   private render(): void {
-    const newFileIcon = this.createLucideIcon(FilePlus, 15, 1.8)
-    const newFolderIcon = this.createLucideIcon(FolderPlus, 15, 1.8)
-    const refreshIcon = this.createLucideIcon(RefreshCw, 15, 1.8)
-    const collapseIcon = this.createLucideIcon(ListCollapse, 15, 1.8)
+    const newFileIcon = this.createLucideIcon(FilePlus, 15, 2.2)
+    const newFolderIcon = this.createLucideIcon(FolderPlus, 15, 2.2)
+    const refreshIcon = this.createLucideIcon(RefreshCw, 15, 2.2)
+    const collapseIcon = this.createLucideIcon(ListCollapse, 15, 2.2)
 
     this.container.innerHTML = `
       <header class="sidebar__header">

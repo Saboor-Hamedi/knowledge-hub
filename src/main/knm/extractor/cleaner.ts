@@ -7,6 +7,11 @@ export function cleanExtractedText(text: string): string {
 
   let cleaned = text
 
+  // 0. Strip null bytes and other control characters Postgres UTF-8 cannot store.
+  //    PostgreSQL rejects \x00 (null byte) outright — this is the most common PDF artifact.
+  //    Also strip other C0/C1 control chars except tab (\x09), LF (\x0A), CR (\x0D).
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+
   // 1. Remove Table of Contents (TOC) lines
   // Matches lines that end with dots and a number, e.g., "Chapter 1 ..... 12"
   cleaned = cleaned.replace(/^.*(?:\.{3,}|\.\s\.\s\.)\s*\d+\s*$/gm, '')

@@ -9,7 +9,7 @@ export function createPool(config: DatabaseConfig): Pool {
     port: config.port || 5432,
     database: config.database || 'knowledgehub',
     user: config.user || 'postgres',
-    password: config.password || 'jan',
+    password: config.password || '',
     max: 5,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000

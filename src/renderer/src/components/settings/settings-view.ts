@@ -575,6 +575,12 @@ export class SettingsView {
               (m) => `<option value="${m}" ${currentModel === m ? 'selected' : ''}>${m}</option>`
             )
             .join('')
+            
+        // Auto-select first installed model if none is valid/selected
+        if (provider === 'ollama' && models.length > 0 && (!currentModel || !models.includes(currentModel))) {
+           select.value = models[0]
+           if (this.onSettingChange) this.onSettingChange({ aiModel: models[0] })
+        }
       }
     } catch (err) {
       console.warn('Failed to refresh models for provider:', provider)

@@ -558,8 +558,13 @@ export class SettingsPanel {
           select.appendChild(option)
         })
 
-        // Manually trigger change to sync if the current selection changed or was initialized
-        this.handleSettingChange(select as unknown as HTMLInputElement)
+        // Auto-select first installed model if the current one is invalid/empty
+        if (models.length > 0 && (!this.currentSettings.aiModel || !models.includes(this.currentSettings.aiModel))) {
+          this.currentSettings.aiModel = models[0]
+          select.value = models[0]
+          // Manually trigger change to sync if the current selection changed
+          this.handleSettingChange(select as unknown as HTMLInputElement)
+        }
       } catch (err) {
         console.error('Failed to fetch Ollama models:', err)
       } finally {

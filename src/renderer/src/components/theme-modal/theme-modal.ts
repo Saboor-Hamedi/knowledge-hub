@@ -79,6 +79,9 @@ export class ThemeModal {
           <button class="theme-modal__close wh-btn">${codicons.close}</button>
         </div>
       </div>
+      <div class="theme-modal__search-container">
+        <input type="text" class="theme-modal__search" placeholder="Search themes..." />
+      </div>
       <div class="theme-modal__list"></div>
     `
     this.container.appendChild(this.modal)
@@ -88,15 +91,26 @@ export class ThemeModal {
       e.stopPropagation()
       this.close()
     })
+
+    // Search event
+    this.modal.querySelector('.theme-modal__search')?.addEventListener('input', () => {
+      this.renderList()
+    })
   }
 
   private renderList(): void {
     const list = this.modal?.querySelector('.theme-modal__list')
+    const searchInput = this.modal?.querySelector('.theme-modal__search') as HTMLInputElement
     if (!list) return
 
     const currentId = themeManager.getCurrentThemeId()
+    const query = (searchInput?.value || '').toLowerCase()
 
-    list.innerHTML = Object.values(themes)
+    const filteredThemes = Object.values(themes).filter(theme => 
+      theme.name.toLowerCase().includes(query)
+    )
+
+    list.innerHTML = filteredThemes
       .map((theme) => {
         const isActive = theme.id === currentId ? 'is-active' : ''
         const bg = theme.colors['--bg']
@@ -110,8 +124,8 @@ export class ThemeModal {
           </div>
           <div class="theme-info">
             <div class="theme-name">${theme.name}</div>
+            ${isActive ? `<div class="theme-check">${codicons.check || '✓'}</div>` : ''}
           </div>
-          ${isActive ? `<div class="theme-check">${codicons.check || '✓'}</div>` : ''}
         </div>
       `
       })

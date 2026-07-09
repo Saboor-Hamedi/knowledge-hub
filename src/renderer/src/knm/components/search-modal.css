@@ -620,6 +620,7 @@ mark.km-highlight.km-active {
 }
 
 .ingestion-file-list li.pending::before   { background: var(--border, #3f3f46); }
+.ingestion-file-list li.unsupported::before { background: var(--danger, #ef4444); }
 .ingestion-file-list li.processing::before {
   background: var(--primary, #2563eb);
   animation: km-pulse 1.4s ease-in-out infinite;

@@ -1,10 +1,9 @@
- ERROR  [vite:esbuild] Transform failed with 1 error:
-B:/electron/knowledgeHub/src/main/knm/extractor/chunker.ts:44:56: ERROR: Expected ";" but found ")"
-file: B:/electron/knowledgeHub/src/main/knm/extractor/chunker.ts:44:56
-
-Expected ";" but found ")"
-42 |        flushCurrent()
-43 |        // Split large paragraph by sentences
-44 |        const sentences = para.match(/[^.!?\n]+[.!?]*\s*/g) || [para]
-   |                                                          ^
-45 |        let sentBuf: string[] = 
+[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/GLOSSARY.md unchanged — skipping
+[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/MISSION.md unchanged — skipping
+[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/NOTES.md unchanged — skipping
+[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/RESOURCES.md unchanged — skipping
+[Extractor] No extractor for C:/Users/Saboor/OneDrive/Documents/lumina/database/assets — skipping
+[Extractor] No extractor for C:/Users/Saboor/OneDrive/Documents/lumina/database/learning-records — skipping
+[Extractor] No extractor for C:/Users/Saboor/OneDrive/Documents/lumina/database/lessons — skipping
+[Extractor] No extractor for C:/Users/Saboor/OneDrive/Documents/lumina/database/reference — skipping
+[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/_MOC.md unchanged — skipping

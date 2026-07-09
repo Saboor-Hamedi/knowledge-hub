@@ -434,7 +434,7 @@ USER QUESTION: ${query}`
 
   // ====== UPLOAD METHODS ======
   
-  private handleFiles(files: File[]): void {
+  private async handleFiles(files: File[]): Promise<void> {
     const dropzone = this.container.querySelector('#ingestion-dropzone') as HTMLElement
     const progressContainer = this.container.querySelector('.ingestion-progress-container') as HTMLElement
     const footer = this.container.querySelector('#ingestion-footer') as HTMLElement
@@ -455,14 +455,36 @@ USER QUESTION: ${query}`
       fileList.innerHTML = ''
     }
 
-    files.forEach(file => {
-      const li = document.createElement('li')
-      li.textContent = file.name
-      li.className = 'pending'
-      fileList.appendChild(li)
-    })
+    const filePaths = files.map(f => f.path)
+    
+    try {
+      const expanded = await window.api.invoke('extractor:expandDropPayload', filePaths) as { path: string, name: string, supported: boolean }[]
+      
+      const validPaths: string[] = []
+      
+      expanded.forEach(file => {
+        const li = document.createElement('li')
+        if (!file.supported) {
+          li.innerHTML = `<span>${this.escape(file.name)}</span> <span style="margin-left:auto; color:var(--danger, #ef4444); font-size:11px;">(Not supported)</span>`
+          li.className = 'unsupported'
+        } else {
+          li.textContent = file.name
+          li.className = 'pending'
+          validPaths.push(file.path)
+        }
+        fileList.appendChild(li)
+      })
 
-    this.startIngestion(files.map(f => f.path))
+      if (validPaths.length > 0) {
+        this.startIngestion(validPaths)
+      } else {
+        this.updateProgress(100, 'No supported files found')
+        setTimeout(() => this.resetUI(), 2500)
+      }
+    } catch (err) {
+      console.error(err)
+      this.resetUI()
+    }
   }
 
   private async startIngestion(filePaths: string[]): Promise<void> {

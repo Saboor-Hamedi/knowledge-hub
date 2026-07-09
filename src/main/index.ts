@@ -1114,6 +1114,42 @@ app.whenReady().then(async () => {
     }
   })
 
+  ipcMain.handle('extractor:expandDropPayload', async (event, filePaths: string[]) => {
+    try {
+      const { stat, readdir } = await import('fs/promises')
+      const { join, basename } = await import('path')
+      const { isSupportedFile } = await import('./knm/extractor/registry')
+
+      const result: { path: string, name: string, supported: boolean }[] = []
+      
+      async function walk(p: string) {
+        try {
+          const s = await stat(p)
+          if (s.isDirectory()) {
+            const children = await readdir(p, { withFileTypes: true })
+            for (const child of children) {
+              await walk(join(p, child.name))
+            }
+          } else {
+            const supported = isSupportedFile(p)
+            result.push({ path: p, name: basename(p), supported })
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      for (const p of filePaths) {
+        await walk(p)
+      }
+
+      return result
+    } catch (err) {
+      console.error(err)
+      return []
+    }
+  })
+
   ipcMain.handle('extractor:startBatchIngestion', async (event, filePaths: string[]) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender)

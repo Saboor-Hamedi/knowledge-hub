@@ -491,28 +491,9 @@ USER QUESTION: ${query}`
       
       if (result.success) {
         this.updateProgress(100, result.message || 'Batch ingestion complete!')
-        
-        const fileList = this.container.querySelector('#ingestion-file-list') as HTMLElement
-        fileList.innerHTML = `
-          <li class="ingestion-success-state">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--success, #4caf50)" stroke-width="2" style="margin-bottom: 12px;">
-              <path d="M20 6L9 17l-5-5"/>
-            </svg>
-            <h4 style="margin: 0 0 8px 0; color: var(--text-strong, #ffffff); font-size: 16px;">Ingestion Successful</h4>
-            <p style="margin: 0; color: var(--text-soft, #cccccc); font-size: 13px;">${result.message}</p>
-          </li>
-        `
-
-        const cancelBtn = this.container.querySelector('#ingestion-cancel-btn') as HTMLElement
-        cancelBtn.textContent = 'Done'
-        cancelBtn.classList.remove('btn-danger')
-        cancelBtn.classList.add('btn-primary')
-        
-        const newBtn = cancelBtn.cloneNode(true) as HTMLElement
-        cancelBtn.parentNode?.replaceChild(newBtn, cancelBtn)
-        newBtn.addEventListener('click', () => {
+        setTimeout(() => {
           this.resetUI()
-        })
+        }, 1500)
       } else {
         alert('Ingestion failed: ' + (result.message || 'Unknown error'))
         this.resetUI()

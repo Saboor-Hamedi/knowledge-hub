@@ -544,7 +544,6 @@ mark.km-highlight.km-active {
   background: var(--panel);
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid var(--border);
 }
 
 .ingestion-progress-header h3 {
@@ -582,7 +581,6 @@ mark.km-highlight.km-active {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
   padding: 8px;

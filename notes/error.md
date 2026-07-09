@@ -1,9 +1,5 @@
-[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/GLOSSARY.md unchanged — skipping
-[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/MISSION.md unchanged — skipping
-[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/NOTES.md unchanged — skipping
-[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/RESOURCES.md unchanged — skipping
-[Extractor] No extractor for C:/Users/Saboor/OneDrive/Documents/lumina/database/assets — skipping
-[Extractor] No extractor for C:/Users/Saboor/OneDrive/Documents/lumina/database/learning-records — skipping
-[Extractor] No extractor for C:/Users/Saboor/OneDrive/Documents/lumina/database/lessons — skipping
-[Extractor] No extractor for C:/Users/Saboor/OneDrive/Documents/lumina/database/reference — skipping
-[Extractor] C:/Users/Saboor/OneDrive/Documents/lumina/database/_MOC.md unchanged — skipping
+Error occurred in handler for 'extractor:expandDropPayload': Error: No handler registered for 'extractor:expandDropPayload'
+    at WebContents.<anonymous> (node:electron/js2c/browser_init:2:78076)
+    at WebContents.emit (node:events:517:28)
+[TerminalManager] Killed session terminal-1783151365630 (PID: 24432)
+[DB] Pool closed.

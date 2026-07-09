@@ -680,3 +680,23 @@ mark.km-highlight.km-active {
   border: 1px solid var(--border, #3f3f46);
 }
 .btn-danger:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger, #ef4444); color: var(--danger, #f87171); }
+
+.ingestion-toast {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: km-fade-in 0.3s ease;
+  text-align: center;
+}
+.ingestion-toast.toast-success {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+.ingestion-toast.toast-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}

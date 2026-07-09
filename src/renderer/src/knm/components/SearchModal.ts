@@ -126,8 +126,9 @@ export class SearchModal {
         </div>
 
         <!-- UPLOAD VIEW -->
-        <div class="km-view" id="view-upload">
+        <div class="km-view km-flex-col" id="view-upload">
           <div class="ingestion-body">
+            <div id="ingestion-toast" class="ingestion-toast" style="display:none;"></div>
             <div class="ingestion-dropzone" id="ingestion-dropzone">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -432,6 +433,17 @@ USER QUESTION: ${query}`
     return safe.replace(pattern, '<mark class="km-highlight km-active">$1</mark>')
   }
 
+  private showToast(message: string, type: 'success' | 'error'): void {
+    const toast = this.container.querySelector('#ingestion-toast') as HTMLElement
+    if (!toast) return
+    toast.textContent = message
+    toast.className = `ingestion-toast toast-${type}`
+    toast.style.display = 'block'
+    setTimeout(() => {
+      toast.style.display = 'none'
+    }, 3000)
+  }
+
   // ====== UPLOAD METHODS ======
   
   private async handleFiles(files: File[]): Promise<void> {
@@ -515,10 +527,11 @@ USER QUESTION: ${query}`
         this.updateProgress(100, result.message || 'Batch ingestion complete!')
         setTimeout(() => {
           this.resetUI()
+          this.showToast('Ingestion Successful', 'success')
         }, 1500)
       } else {
-        alert('Ingestion failed: ' + (result.message || 'Unknown error'))
         this.resetUI()
+        this.showToast('Ingestion failed: ' + (result.message || 'Unknown error'), 'error')
       }
     } catch (err) {
       console.error('Failed to start ingestion:', err)

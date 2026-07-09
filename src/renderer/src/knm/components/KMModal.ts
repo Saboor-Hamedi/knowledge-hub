@@ -299,7 +299,7 @@ export class KMModal {
         truncateText.textContent = 'Preparing...'
 
         const unsub = window.api.database.onTruncateProgress((percent, status) => {
-          truncateFill.style.width = \`\${percent}%\`
+          truncateFill.style.width = `${percent}%`
           truncateText.textContent = status
         })
 

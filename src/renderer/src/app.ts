@@ -33,7 +33,7 @@ import { ConsoleComponent } from './components/console/console'
 import { RealTerminalComponent } from './components/terminal/real-terminal'
 import { GraphView } from './components/graph/graph'
 import { TimelineComponent } from './components/timeline/timeline'
-import { IngestionModal } from "./knm/components/IngestionModal";
+import { SearchModal } from './knm/components/SearchModal'
 import { SearchModal } from "./knm/components/SearchModal";
 import { themeManager } from './core/themeManager'
 import { ErrorHandler } from './utils/error-handler'
@@ -86,7 +86,6 @@ class App {
   private pendingSettingsUpdate: number | null = null
   private welcomePage: WelcomePage
   private timeline: TimelineComponent
-  private ingestionModal: IngestionModal
   private searchModal: SearchModal
 
   private vaultHandler: VaultHandler
@@ -116,7 +115,7 @@ class App {
     const graphHost = document.getElementById('graphHost')
     this.graphTabView = new GraphView(graphHost || document.body, false) // Tab instance
     this.timeline = new TimelineComponent('timelineHost')
-    this.ingestionModal = new IngestionModal()
+
     this.searchModal = new SearchModal()
 
     this.viewOrchestrator = new ViewOrchestrator({
@@ -278,7 +277,7 @@ class App {
       void this.vaultHandler.openNote(id, path)
     }) as EventListener)
     window.addEventListener('toggle-documentation-modal', () => this.documentationModal.toggle())
-    window.addEventListener('open-ingestion-modal', () => this.ingestionModal.show())
+    window.addEventListener('open-ingestion-modal', () => this.searchModal.showUpload())
     window.addEventListener('open-search-modal', () => this.searchModal.show())
     window.addEventListener('knowledge-hub:insert-at-cursor', ((
       e: CustomEvent<{ content: string }>
@@ -934,14 +933,14 @@ class App {
         }
       }
     })
-    reg('Control+k', 'Global Hybrid Search', () => this.searchModal.show())
-    reg('Control+Shift+u', 'Import Data (Ingestion)', () => this.ingestionModal.show())
+    reg('Control+k', 'Global Search', () => this.searchModal.show())
+    reg('Control+Shift+u', 'Import Data', () => this.searchModal.showUpload())
     reg('Control+Shift+p', 'Command Palette', () => this.fuzzyFinder.toggle('commands'))
     reg('Control+i', 'Toggle Right Sidebar', () => void this.viewOrchestrator.toggleRightSidebar())
     reg('Control+Alt+s', 'Open AI Configuration', () => this.aiSettingsModal.open())
 
     window.addEventListener('open-ingestion-modal', () => {
-      this.ingestionModal.show()
+      this.searchModal.showUpload()
     })
 
     reg('Control+F5', 'Reload Window', () => window.location.reload())
@@ -1438,7 +1437,7 @@ class App {
         id: 'knm-ingestion',
         label: 'KNM: Import Data',
         description: 'Open the Data Ingestion Modal',
-        handler: () => this.ingestionModal.show()
+        handler: () => this.searchModal.showUpload()
       },
       {
         id: 'knm-search',

@@ -5,6 +5,7 @@ import { aiProviderManager } from '../../services/ai/provider-manager'
 export class SearchModal {
   private container: HTMLElement
   private overlay: HTMLElement
+  private removeProgressCb?: () => void
 
   constructor() {
     this.overlay = document.createElement('div')
@@ -21,10 +22,50 @@ export class SearchModal {
     this.setupListeners()
   }
 
-  show(): void {
+  async show(): Promise<void> {
     this.overlay.style.display = 'flex'
     const input = this.container.querySelector('#search-input') as HTMLInputElement
     if (input) setTimeout(() => input.focus(), 50)
+      
+    // Fetch batch status when opened to see if ingestion is running
+    try {
+      const status = await window.api.extractor.getBatchStatus()
+      if (status.isProcessing) {
+        this.switchView('upload', 'Upload Documents')
+        
+        const dropzone = this.container.querySelector('#ingestion-dropzone') as HTMLElement
+        const progressContainer = this.container.querySelector('.ingestion-progress-container') as HTMLElement
+        const fileList = this.container.querySelector('#ingestion-file-list') as HTMLElement
+
+        dropzone.style.display = 'none'
+        progressContainer.style.display = 'flex'
+        
+        fileList.innerHTML = ''
+        status.queue.forEach(filePath => {
+          const li = document.createElement('li')
+          li.textContent = filePath.split(/[\\/]/).pop() || filePath
+          li.className = 'pending'
+          fileList.appendChild(li)
+        })
+
+        if (status.status.startsWith('Extracting ')) {
+          const fileName = status.status.replace('Extracting ', '').replace('...', '')
+          const li = document.createElement('li')
+          li.textContent = fileName
+          li.className = 'processing'
+          fileList.insertBefore(li, fileList.firstChild)
+        }
+
+        this.updateProgress(status.percent, status.status)
+      }
+    } catch (err) {
+      console.error('Failed to get batch status:', err)
+    }
+  }
+
+  async showUpload(): Promise<void> {
+    await this.show()
+    this.switchView('upload', 'Upload Documents')
   }
 
   hide(): void {
@@ -33,36 +74,118 @@ export class SearchModal {
 
   private render(): void {
     this.container.innerHTML = `
-      <div class="km-titlebar">
-        <span class="km-titlebar__title">Knowledge Hub</span>
-        <div class="km-titlebar__right">
-          <span class="km-titlebar__hint">esc to close</span>
-          <button class="km-titlebar__close" id="km-close-btn">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-              <path d="M9 1L1 9M1 1l8 8"/>
-            </svg>
-          </button>
+      <div class="km-sidebar">
+        <div class="km-sidebar-header">
+          <h3>Knowledge Hub</h3>
+        </div>
+        <div class="km-sidebar-menu">
+          <div class="km-sidebar-item active" data-view="search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            Search
+          </div>
+          <div class="km-sidebar-item" data-view="upload">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload Documents
+          </div>
         </div>
       </div>
-      <div class="km-chat-messages" id="km-chat-messages">
-        <div class="km-welcome" id="km-welcome">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <p>Search your Knowledge Hub</p>
+      
+      <div class="km-main">
+        <div class="km-titlebar">
+          <span class="km-titlebar__title" id="km-view-title">Search</span>
+          <div class="km-titlebar__right">
+            <span class="km-titlebar__hint">esc to close</span>
+            <button class="km-titlebar__close" id="km-close-btn">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <path d="M11 1L1 11M1 1l10 10"/>
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="km-input-bar">
-        <div class="km-input-wrap">
-          <input id="search-input" type="text" placeholder="Ask anything about your documents..." autocomplete="off" />
-          <button id="km-send" class="km-send-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
-          </button>
+
+        <!-- SEARCH VIEW -->
+        <div class="km-view active" id="view-search">
+          <div class="km-chat-messages" id="km-chat-messages">
+            <div class="km-welcome" id="km-welcome">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              <p>Search your Knowledge Hub</p>
+            </div>
+          </div>
+          <div class="km-input-bar">
+            <div class="km-input-wrap">
+              <textarea id="search-input" placeholder="Ask anything about your documents..." rows="1"></textarea>
+              <button id="km-send" class="km-send-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- UPLOAD VIEW -->
+        <div class="km-view" id="view-upload">
+          <div class="ingestion-body">
+            <div class="ingestion-dropzone" id="ingestion-dropzone">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <p>Drop files here to ingest</p>
+              <span class="drop-hint">PDF, DOCX, XLSX, CSV, TXT, MD</span>
+              <input type="file" id="ingestion-file-input" multiple style="display:none;" accept=".pdf,.docx,.xlsx,.csv,.txt,.md" />
+              <button class="km-browse-btn" id="ingestion-browse-btn">Browse Files</button>
+            </div>
+            <div class="ingestion-progress-container" style="display: none;">
+              <div class="ingestion-progress-header">
+                <h3>Processing</h3>
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" id="ingestion-progress-fill"></div>
+                </div>
+                <p id="ingestion-progress-text">Starting…</p>
+              </div>
+              <div class="ingestion-file-list-wrapper">
+                <ul id="ingestion-file-list" class="ingestion-file-list"></ul>
+              </div>
+            </div>
+          </div>
+          <div class="ingestion-modal__footer" id="ingestion-footer" style="display:none;">
+            <button class="btn btn-secondary" id="ingestion-add-more-btn">Add More</button>
+            <button class="btn btn-danger" id="ingestion-cancel-btn">Cancel Processing</button>
+          </div>
         </div>
       </div>
     `
+  }
+
+  private switchView(viewId: string, title: string): void {
+    // Update sidebar active state
+    this.container.querySelectorAll('.km-sidebar-item').forEach(el => {
+      el.classList.remove('active')
+      if (el.getAttribute('data-view') === viewId) {
+        el.classList.add('active')
+      }
+    })
+
+    // Update title
+    const titleEl = this.container.querySelector('#km-view-title')
+    if (titleEl) titleEl.textContent = title
+
+    // Show correct view
+    this.container.querySelectorAll('.km-view').forEach(el => {
+      el.classList.remove('active')
+      if (el.id === 'view-' + viewId) {
+        el.classList.add('active')
+      }
+    })
+
+    if (viewId === 'search') {
+      const input = this.container.querySelector('#search-input') as HTMLInputElement
+      if (input) input.focus()
+    }
   }
 
   private setupListeners(): void {
@@ -71,40 +194,105 @@ export class SearchModal {
       if (e.target === this.overlay) this.hide()
     })
 
-    const input = this.container.querySelector('#search-input') as HTMLInputElement
-    const sendBtn = this.container.querySelector('#km-send') as HTMLButtonElement
     const closeBtn = this.container.querySelector('#km-close-btn') as HTMLButtonElement
-
     if (closeBtn) closeBtn.addEventListener('click', () => this.hide())
 
-    const submit = () => {
-      const q = input.value.trim()
-      if (!q) return
-      input.value = ''
-      sendBtn.disabled = true
-      this.runSearch(q).finally(() => { sendBtn.disabled = false })
-    }
-
-    sendBtn.addEventListener('click', submit)
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); submit() }
-    })
-
-    // Global ESC key to close modal when active
+    // Global ESC key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.overlay.style.display !== 'none') {
         this.hide()
       }
     })
+    
+    // Sidebar switching
+    const sidebarItems = this.container.querySelectorAll('.km-sidebar-item')
+    sidebarItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const viewId = item.getAttribute('data-view')
+        const title = item.textContent?.trim() || 'Search'
+        if (viewId) this.switchView(viewId, title)
+      })
+    })
+
+    // --- SEARCH LISTENERS ---
+    const input = this.container.querySelector('#search-input') as HTMLTextAreaElement
+    const sendBtn = this.container.querySelector('#km-send') as HTMLButtonElement
+
+    const submitSearch = () => {
+      const q = input.value.trim()
+      if (!q) return
+      input.value = ''
+      input.style.height = 'auto'
+      sendBtn.disabled = true
+      this.runSearch(q).finally(() => { sendBtn.disabled = false })
+    }
+
+    sendBtn.addEventListener('click', submitSearch)
+    
+    input.addEventListener('input', () => {
+      input.style.height = 'auto'
+      input.style.height = (input.scrollHeight) + 'px'
+    })
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { 
+        e.preventDefault()
+        submitSearch() 
+      }
+    })
 
     // Clear highlights on click anywhere in the container
-    this.container.addEventListener('click', () => {
+    this.container.addEventListener('click', (e) => {
+      // Don't clear if clicking on a highlight
+      if ((e.target as HTMLElement).classList.contains('km-highlight')) return;
       this.container.querySelectorAll('.km-highlight.km-active').forEach(el => {
         el.classList.remove('km-active')
       })
     })
+
+    // --- UPLOAD LISTENERS ---
+    const dropzone = this.container.querySelector('#ingestion-dropzone') as HTMLElement
+    const fileInput = this.container.querySelector('#ingestion-file-input') as HTMLInputElement
+    const browseBtn = this.container.querySelector('#ingestion-browse-btn')
+
+    browseBtn?.addEventListener('click', () => fileInput.click())
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      dropzone.classList.add('dragover')
+    })
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover')
+    })
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault()
+      dropzone.classList.remove('dragover')
+      if (e.dataTransfer?.files) {
+        this.handleFiles(Array.from(e.dataTransfer.files))
+      }
+    })
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files) {
+        this.handleFiles(Array.from(fileInput.files))
+      }
+    })
+
+    const cancelBtn = this.container.querySelector('#ingestion-cancel-btn')
+    cancelBtn?.addEventListener('click', () => {
+      window.api.invoke('extractor:cancelBatchIngestion')
+    })
+    
+    const addMoreBtn = this.container.querySelector('#ingestion-add-more-btn')
+    addMoreBtn?.addEventListener('click', () => {
+      fileInput?.click()
+    })
   }
 
+  // ====== SEARCH METHODS ======
+  
   private scrollToBottom(): void {
     const el = this.container.querySelector('#km-chat-messages') as HTMLElement
     if (el) el.scrollTop = el.scrollHeight
@@ -124,13 +312,11 @@ export class SearchModal {
   }
 
   private async runSearch(query: string): Promise<void> {
-    // User bubble
     this.addMessage(
       `<div class="km-bubble km-bubble--user">${this.escape(query)}</div>`,
       'user'
     )
 
-    // Thinking bubble
     const thinkingRow = this.addMessage(
       `<div class="km-bubble km-bubble--assistant">
          <span class="km-dots"><span></span><span></span><span></span></span>
@@ -150,11 +336,9 @@ export class SearchModal {
         12000
       )
 
-      // Replace thinking bubble with results
       thinkingRow.remove()
 
       if (result?.success && result.results?.length > 0) {
-        // 1. Create a bubble for the AI streamed answer (initially showing thinking dots)
         const answerBubble = this.addMessage(
           `<div class="km-bubble km-bubble--assistant km-ai-answer" style="padding-bottom: 8px;">
              <span class="km-dots"><span></span><span></span><span></span></span>
@@ -163,7 +347,6 @@ export class SearchModal {
         )
         const answerEl = answerBubble.querySelector('.km-ai-answer') as HTMLElement
 
-        // 2. Add the source cards bubble
         const cardsHtml = result.results.map((res: any) => `
           <div class="km-source-card" data-path="${this.escape(res.vault_path)}">
             <div class="km-source-header">
@@ -182,7 +365,6 @@ export class SearchModal {
           'assistant'
         )
 
-        // 3. Build the prompt for the LLM
         const contextText = result.results.map((r: any) => `[Source: ${r.file_name}]\n${r.content}`).join('\n\n---\n\n')
         const prompt = `You are a helpful knowledge assistant. Use the provided source documents to answer the user's question. 
 If the documents contain relevant information, synthesize it into a clear, well-written summary paragraph. 
@@ -193,12 +375,11 @@ ${contextText}
 
 USER QUESTION: ${query}`
 
-        // 4. Stream the LLM response
         try {
           let fullText = ''
           for await (const chunk of aiProviderManager.streamResponse([{ role: 'user', content: prompt }])) {
             if (fullText === '') {
-              answerEl.innerHTML = '' // remove dots on first chunk
+              answerEl.innerHTML = ''
             }
             fullText += chunk
             answerEl.innerHTML = formatMarkdown(fullText)
@@ -235,12 +416,10 @@ USER QUESTION: ${query}`
     return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   }
 
-  /** Escape HTML then wrap each query word in <mark> */
   private highlight(text: string, query: string): string {
     const safe = this.escape(text)
     if (!query.trim()) return safe
 
-    // Split query into individual words, filter empties and stop words, escape regex special chars
     const stopWords = new Set(['is', 'are', 'am', 'was', 'were', 'be', 'been', 'being', 'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'with', 'what', 'who', 'whom', 'where', 'when', 'why', 'how', 'which', 'in', 'of', 'this', 'that', 'these', 'those'])
     const words = query.trim()
       .split(/\s+/)
@@ -249,8 +428,139 @@ USER QUESTION: ${query}`
 
     if (!words.length) return safe
 
-    // Use word boundaries \b so we don't highlight 'is' inside 'English'
     const pattern = new RegExp(`\\b(${words.join('|')})\\b`, 'gi')
     return safe.replace(pattern, '<mark class="km-highlight km-active">$1</mark>')
+  }
+
+  // ====== UPLOAD METHODS ======
+  
+  private handleFiles(files: File[]): void {
+    const dropzone = this.container.querySelector('#ingestion-dropzone') as HTMLElement
+    const progressContainer = this.container.querySelector('.ingestion-progress-container') as HTMLElement
+    const footer = this.container.querySelector('#ingestion-footer') as HTMLElement
+    const fileList = this.container.querySelector('#ingestion-file-list') as HTMLElement
+    const cancelBtn = this.container.querySelector('#ingestion-cancel-btn') as HTMLElement
+
+    if (cancelBtn && cancelBtn.textContent === 'Done') {
+      this.resetUI()
+    }
+
+    const isAlreadyProcessing = progressContainer.style.display === 'flex' || progressContainer.style.display === 'block'
+    
+    dropzone.style.display = 'none'
+    progressContainer.style.display = 'flex'
+    if (footer) footer.style.display = 'flex'
+
+    if (!isAlreadyProcessing) {
+      fileList.innerHTML = ''
+    }
+
+    files.forEach(file => {
+      const li = document.createElement('li')
+      li.textContent = file.name
+      li.className = 'pending'
+      fileList.appendChild(li)
+    })
+
+    this.startIngestion(files.map(f => f.path))
+  }
+
+  private async startIngestion(filePaths: string[]): Promise<void> {
+    if (this.removeProgressCb) {
+      this.removeProgressCb()
+    }
+    
+    this.removeProgressCb = window.api.extractor.onProgress((percent, status) => {
+      this.updateProgress(percent, status)
+      
+      if (status.startsWith('Extracting ')) {
+        const fileName = status.replace('Extracting ', '').replace('...', '')
+        const listItems = this.container.querySelectorAll('#ingestion-file-list li')
+        listItems.forEach(li => {
+          if (li.textContent === fileName) {
+            li.className = 'processing'
+          } else if (li.className === 'processing') {
+            li.className = 'done'
+          }
+        })
+      }
+    })
+
+    try {
+      const result = await window.api.extractor.startBatchIngestion(filePaths)
+      
+      if (result.success) {
+        this.updateProgress(100, result.message || 'Batch ingestion complete!')
+        
+        const fileList = this.container.querySelector('#ingestion-file-list') as HTMLElement
+        fileList.innerHTML = `
+          <li class="ingestion-success-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--success, #4caf50)" stroke-width="2" style="margin-bottom: 12px;">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            <h4 style="margin: 0 0 8px 0; color: var(--text-strong, #ffffff); font-size: 16px;">Ingestion Successful</h4>
+            <p style="margin: 0; color: var(--text-soft, #cccccc); font-size: 13px;">${result.message}</p>
+          </li>
+        `
+
+        const cancelBtn = this.container.querySelector('#ingestion-cancel-btn') as HTMLElement
+        cancelBtn.textContent = 'Done'
+        cancelBtn.classList.remove('btn-danger')
+        cancelBtn.classList.add('btn-primary')
+        
+        const newBtn = cancelBtn.cloneNode(true) as HTMLElement
+        cancelBtn.parentNode?.replaceChild(newBtn, cancelBtn)
+        newBtn.addEventListener('click', () => {
+          this.resetUI()
+        })
+      } else {
+        alert('Ingestion failed: ' + (result.message || 'Unknown error'))
+        this.resetUI()
+      }
+    } catch (err) {
+      console.error('Failed to start ingestion:', err)
+      this.updateProgress(0, 'Error occurred')
+      this.resetUI()
+    } finally {
+      if (this.removeProgressCb) {
+        this.removeProgressCb()
+        this.removeProgressCb = undefined
+      }
+    }
+  }
+
+  public updateProgress(percentage: number, statusText: string): void {
+    const fill = this.container.querySelector('#ingestion-progress-fill') as HTMLElement
+    const text = this.container.querySelector('#ingestion-progress-text') as HTMLElement
+    if (fill) fill.style.width = `${percentage}%`
+    if (text) text.textContent = statusText
+  }
+
+  private resetUI(): void {
+    const dropzone = this.container.querySelector('#ingestion-dropzone') as HTMLElement
+    const progressContainer = this.container.querySelector('.ingestion-progress-container') as HTMLElement
+    const footer = this.container.querySelector('#ingestion-footer') as HTMLElement
+    const fileInput = this.container.querySelector('#ingestion-file-input') as HTMLInputElement
+    
+    progressContainer.style.display = 'none'
+    dropzone.style.display = 'flex'
+    if (footer) footer.style.display = 'none'
+    
+    // Clear input
+    if (fileInput) fileInput.value = ''
+    
+    // Restore cancel button state
+    const cancelBtn = this.container.querySelector('#ingestion-cancel-btn') as HTMLElement
+    if (cancelBtn) {
+      cancelBtn.textContent = 'Cancel Processing'
+      cancelBtn.classList.remove('btn-primary')
+      cancelBtn.classList.add('btn-danger')
+      const newBtn = cancelBtn.cloneNode(true) as HTMLElement
+      cancelBtn.parentNode?.replaceChild(newBtn, cancelBtn)
+      newBtn.addEventListener('click', () => {
+        window.api.invoke('extractor:cancelBatchIngestion')
+        this.resetUI()
+      })
+    }
   }
 }
